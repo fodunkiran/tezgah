@@ -1,0 +1,8 @@
+{
+  "name": "bekci",
+  "description": "Branch guards as hooks: no direct push to a project's integration or release branch, no edit to a file that has landed and must not change. No skills; nothing enters the context.",
+  "author": {
+    "name": "Furkan ODUNKIRAN"
+  },
+  "keywords": ["git", "hooks", "branch-protection", "guard"]
+}

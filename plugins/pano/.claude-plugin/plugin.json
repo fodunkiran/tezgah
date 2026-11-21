@@ -1,0 +1,8 @@
+{
+  "name": "pano",
+  "description": "A work board for coding sessions: task cards kept in a claude.ai artifact database, outside the conversation, for all of a person's projects.",
+  "author": {
+    "name": "Furkan ODUNKIRAN"
+  },
+  "keywords": ["tasks", "board", "state", "artifact"]
+}

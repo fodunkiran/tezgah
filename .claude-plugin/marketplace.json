@@ -1,0 +1,24 @@
+{
+  "name": "tezgah",
+  "description": "Small plugins for a solo developer's workflow with coding agents: branch guards, a work board, and a procedure for parallel sessions. Each installs alone and adds next to nothing to the context.",
+  "owner": {
+    "name": "Furkan ODUNKIRAN"
+  },
+  "plugins": [
+    {
+      "name": "bekci",
+      "source": "./plugins/bekci",
+      "description": "Branch guards as hooks: no direct push to a project's integration or release branch, no edit to a file that has landed and must not change. No skills; nothing enters the context."
+    },
+    {
+      "name": "pano",
+      "source": "./plugins/pano",
+      "description": "A work board for coding sessions: task cards kept in a claude.ai artifact database, outside the conversation, for all of a person's projects."
+    },
+    {
+      "name": "orkestra",
+      "source": "./plugins/orkestra",
+      "description": "A procedure for running a wave of parallel worker sessions: brief, review, land in order, tidy. Written for the Claude desktop app's Code tab."
+    }
+  ]
+}

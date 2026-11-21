@@ -1,0 +1,1164 @@
+<title>İş Panosu</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: a "your turn" band over four lanes of cards (new, queue, in progress, closed); a card opens in a dialog. */
+:root {
+  --bg: #f2f4f3; --surface: #ffffff; --lane: #e6eae8; --ink: #17201d; --muted: #5a6662; --line: #d0d8d4;
+  --hover: #f4f7f6; --sel: #d9eae4; --accent: #0e6b5b; --accent-ink: #ffffff; --scrim: rgba(12, 18, 16, .5);
+  --turn-bg: #fff5df; --turn-line: #e8cf93;
+  --new-bg: #ece6fa; --new-ink: #4c3299; --info-bg: #dfeafb; --info-ink: #1c4a8f;
+  --warn-bg: #ffe9b8; --warn-ink: #6b4100; --bad-bg: #fde3e0; --bad-ink: #8f1d12;
+  --ok-bg: #dff3e6; --ok-ink: #17603a; --idle-bg: #e3e8e6; --idle-ink: #48534f;
+  --font-text: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-head: "IBM Plex Sans Condensed", "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101513; --surface: #1d2522; --lane: #161c1a; --ink: #e6ece9; --muted: #9ba8a3; --line: #303b37;
+    --hover: #232d29; --sel: #1d342d; --accent: #62c7b2; --accent-ink: #06211b; --scrim: rgba(0, 0, 0, .6);
+    --turn-bg: #2a2110; --turn-line: #5b4718;
+    --new-bg: #2a2342; --new-ink: #c6b8f4; --info-bg: #17293f; --info-ink: #9fc4f6;
+    --warn-bg: #4a370f; --warn-ink: #f6d083; --bad-bg: #3f1d1a; --bad-ink: #f4a399;
+    --ok-bg: #173225; --ok-ink: #92d6ab; --idle-bg: #29322f; --idle-ink: #b5c0bc;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101513; --surface: #1d2522; --lane: #161c1a; --ink: #e6ece9; --muted: #9ba8a3; --line: #303b37;
+  --hover: #232d29; --sel: #1d342d; --accent: #62c7b2; --accent-ink: #06211b; --scrim: rgba(0, 0, 0, .6);
+  --turn-bg: #2a2110; --turn-line: #5b4718;
+  --new-bg: #2a2342; --new-ink: #c6b8f4; --info-bg: #17293f; --info-ink: #9fc4f6;
+  --warn-bg: #4a370f; --warn-ink: #f6d083; --bad-bg: #3f1d1a; --bad-ink: #f4a399;
+  --ok-bg: #173225; --ok-ink: #92d6ab; --idle-bg: #29322f; --idle-ink: #b5c0bc;
+  color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font-text); }
+.wrap {
+  padding-block: 24px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page { max-width: 160rem; margin: 0 auto; padding-inline: clamp(0px, 1.6vw, 40px); display: grid; gap: 20px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ro .w-only { display: none; }
+.hint { font-size: 13.5px; color: var(--muted); }
+.hint.err { color: var(--bad-ink); }
+.id { font: 500 13px/1.4 var(--font-mono); color: var(--muted); }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; gap: 16px 48px; align-items: flex-end; justify-content: space-between; }
+.top-main { min-width: 0; flex: 1 1 28rem; }
+.top-side { display: flex; flex-wrap: wrap; gap: 14px 32px; align-items: flex-end; }
+.eyebrow { margin: 0 0 8px; font: 500 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 600 36px/1.05 var(--font-head); letter-spacing: -.01em; text-wrap: balance; }
+.goal { margin: 8px 0 0; max-width: 70ch; font-size: 17px; }
+.goal.unset { color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 10px 32px; margin: 0; }
+.fact { display: grid; gap: 2px; }
+.fact dt { font-size: 13px; color: var(--muted); }
+.fact dd { margin: 0; font: 500 14px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+.notice { margin: 0; padding: 10px 14px; border-radius: 6px; background: var(--warn-bg); color: var(--warn-ink); }
+
+/* Summary and filters */
+.bar { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: center; justify-content: space-between; padding-block: 12px; border-block: 1px solid var(--line); }
+.summary { display: flex; flex-wrap: wrap; gap: 6px 26px; color: var(--muted); }
+.sum b { margin-right: 6px; font: 600 17px/1 var(--font-text); font-variant-numeric: tabular-nums; color: var(--ink); }
+.sum.hot, .sum.hot b { color: var(--warn-ink); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.filters input { width: 14rem; max-width: 100%; }
+.groups { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg { padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: 500 14px/1.2 var(--font-text); cursor: pointer; }
+.seg:hover { background: var(--hover); color: var(--ink); }
+.seg[aria-pressed="true"], .seg[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+
+/* Your turn */
+.turn { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--turn-line); border-radius: 12px; background: var(--turn-bg); }
+.turn-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+.turn h2, .lane h2 { margin: 0; font: 600 18px/1.2 var(--font-head); letter-spacing: .01em; }
+.count { margin-left: 6px; font: 500 14px/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.turn .cards { grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
+
+/* Lanes */
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 16px; align-items: start; }
+.lane { display: grid; gap: 10px; align-content: start; min-width: 0; padding: 14px; border-radius: 12px; background: var(--lane); outline: 2px dashed transparent; outline-offset: -2px; }
+.lane.over { outline-color: var(--accent); }
+.lane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.lane-hint { margin: 0; }
+.cards { position: relative; display: grid; gap: 8px; min-width: 0; }
+.empty { margin: 0; padding: 6px 2px; color: var(--muted); font-size: 14.5px; }
+.drop-line { position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+
+/* Cards */
+.card { display: flex; gap: 10px; min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.card:hover { border-color: var(--muted); background: var(--hover); }
+.card.dragging { opacity: .4; }
+.rank { flex: none; min-width: 2ch; font: 500 14px/1.6 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.card-body { display: grid; gap: 4px; min-width: 0; flex: 1; justify-items: start; }
+.card-title { font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.card-title.struck { color: var(--muted); text-decoration: line-through; }
+.lane[data-lane="done"] .card-title { font-weight: 400; color: var(--muted); }
+.card-note, .card-reply { font-size: 14.5px; color: var(--muted); overflow-wrap: anywhere; }
+.turn .card-note { color: var(--ink); }
+.card-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; margin-top: 2px; }
+.chip { padding: 0 7px; border: 1px solid var(--line); border-radius: 4px; font-size: 13px; line-height: 1.6; color: var(--muted); white-space: nowrap; }
+.chip.soft { border-color: transparent; background: var(--idle-bg); color: var(--idle-ink); }
+.when { font-size: 13px; color: var(--muted); }
+.mark { display: inline-flex; color: var(--muted); }
+.cta { padding: 3px 12px; border-radius: 999px; background: var(--ink); color: var(--bg); font: 500 13.5px/1.5 var(--font-text); }
+.pill { padding: 1px 10px; border-radius: 999px; font: 500 13px/1.6 var(--font-text); white-space: nowrap; }
+.st-new { background: var(--new-bg); color: var(--new-ink); }
+.st-info { background: var(--info-bg); color: var(--info-ink); }
+.st-warn { background: var(--warn-bg); color: var(--warn-ink); }
+.st-bad { background: var(--bad-bg); color: var(--bad-ink); }
+.st-ok { background: var(--ok-bg); color: var(--ok-ink); }
+.st-idle { background: var(--idle-bg); color: var(--idle-ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .card.flash { animation: flash 1.4s ease-out; }
+  @keyframes flash { from { background: var(--sel); border-color: var(--accent); } }
+}
+
+/* Controls */
+input[type="text"], input[type="search"], input[type="date"], textarea { box-sizing: border-box; width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; }
+textarea { resize: vertical; line-height: 1.5; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+.btn { padding: 9px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 500 15px/1.2 var(--font-text); cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--hover); }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+.btn.quiet:hover { background: var(--hover); color: var(--ink); }
+.btn.danger { color: var(--bad-ink); }
+.btn:disabled, input:disabled, textarea:disabled { opacity: .55; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.composer { display: grid; gap: 8px; }
+.composer textarea { resize: none; }
+.composer-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+
+/* Dialogs */
+dialog { box-sizing: border-box; width: min(46rem, calc(100vw - 32px)); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 16px/1.5 var(--font-text); }
+dialog::backdrop { background: var(--scrim); }
+.sheet { display: grid; gap: 18px; padding: 24px; }
+.sheet-head { display: flex; align-items: center; gap: 14px; }
+.sheet-head .btn { margin-left: auto; }
+.title-input { padding: 6px 10px; margin-inline: -10px; width: calc(100% + 20px); border-color: transparent; resize: none; overflow: hidden; font: 600 24px/1.25 var(--font-head); }
+.title-input:hover, .title-input:focus { border-color: var(--line); }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label, .label { font-weight: 500; font-size: 15px; }
+.seg-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 18px; align-items: start; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.quote { display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--lane); }
+.quote p { margin: 0; overflow-wrap: anywhere; }
+.fold { border-top: 1px solid var(--line); padding-top: 14px; }
+.fold summary { cursor: pointer; font-weight: 500; font-size: 15px; }
+.fold summary .hint { font-weight: 400; }
+.fold-body { display: grid; gap: 16px; padding-top: 14px; }
+.sheet-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-top: 14px; border-top: 1px solid var(--line); }
+.del { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.dlg-title { margin: 0; font: 600 22px/1.2 var(--font-head); }
+.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.foot { margin: 8px 0 0; max-width: 80ch; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 600px) {
+  h1 { font-size: 30px; }
+  .filters, .filters input { width: 100%; }
+  dialog { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; }
+  .sheet { padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)); }
+}
+</style>
+
+<div class="wrap" id="wrap" lang="tr">
+  <div class="page">
+    <header class="top">
+      <div class="top-main">
+        <p class="eyebrow">İş panosu</p>
+        <h1 id="project-name">Pano</h1>
+        <p id="goal" class="goal unset">Yükleniyor…</p>
+      </div>
+      <div class="top-side">
+        <dl id="facts" class="facts"></dl>
+        <button type="button" id="edit-board" class="btn w-only">Panoyu düzenle</button>
+      </div>
+    </header>
+
+    <p id="notice" class="notice" role="status" hidden></p>
+
+    <div class="bar">
+      <div id="summary" class="summary" aria-label="Özet"></div>
+      <div class="filters">
+        <label class="sr" for="q">İşlerde ara</label>
+        <input id="q" type="search" placeholder="İşlerde ara" autocomplete="off">
+        <div id="groups" class="groups" role="group" aria-label="Gruba göre süz" hidden></div>
+      </div>
+    </div>
+
+    <section id="turn" class="turn" aria-labelledby="h-wait" hidden>
+      <div class="turn-head">
+        <h2 id="h-wait">Sıra sende<span class="count" id="count-wait"></span></h2>
+        <span class="hint">Ajan bu işlerde senden bir söz ya da karar bekliyor.</span>
+      </div>
+      <div class="cards" id="cards-wait"></div>
+    </section>
+
+    <div class="board" id="board">
+      <section class="lane" data-lane="inbox" aria-labelledby="h-inbox">
+        <div class="lane-head"><h2 id="h-inbox">Yeni<span class="count" id="count-inbox"></span></h2></div>
+        <form id="add-form" class="composer w-only" autocomplete="off">
+          <label class="sr" for="add-title">Yeni iş</label>
+          <textarea id="add-title" rows="2" maxlength="4000" placeholder="Ne yapılsın? Aklındaki gibi yaz." disabled></textarea>
+          <div class="composer-foot">
+            <span class="hint">İlk satır başlık olur. Enter ekler, Shift+Enter yeni satır.</span>
+            <button type="submit" id="add-btn" class="btn primary" disabled>Ekle</button>
+          </div>
+        </form>
+        <div class="cards" id="cards-inbox"></div>
+      </section>
+      <section class="lane" data-lane="todo" aria-labelledby="h-todo">
+        <div class="lane-head"><h2 id="h-todo">Sırada<span class="count" id="count-todo"></span></h2></div>
+        <p class="lane-hint hint w-only">Üstteki önce yapılır. Sıralamak için sürükle.</p>
+        <div class="cards" id="cards-todo"></div>
+      </section>
+      <section class="lane" data-lane="doing" aria-labelledby="h-doing">
+        <div class="lane-head"><h2 id="h-doing">Yapılıyor<span class="count" id="count-doing"></span></h2></div>
+        <div class="cards" id="cards-doing"></div>
+      </section>
+      <section class="lane" data-lane="later" aria-labelledby="h-later">
+        <div class="lane-head"><h2 id="h-later">Sonra<span class="count" id="count-later"></span></h2></div>
+        <p class="lane-hint hint">Sıraya girmemiş fikirler. Ajan bunlara kendiliğinden bakmaz; sıraya sürüklediğini alır.</p>
+        <div class="cards" id="cards-later"></div>
+        <button type="button" id="more-later" class="btn quiet" hidden></button>
+      </section>
+      <section class="lane" data-lane="done" aria-labelledby="h-done">
+        <div class="lane-head"><h2 id="h-done">Kapanan<span class="count" id="count-done"></span></h2></div>
+        <div class="cards" id="cards-done"></div>
+        <button type="button" id="more-done" class="btn quiet" hidden></button>
+      </section>
+    </div>
+
+    <p class="foot">Ajan bu sayfayı okumaz; işleri veritabanından alır. Sayfa senin için: yaz, sırala, cevapla.</p>
+  </div>
+</div>
+
+<dialog id="card-dialog" aria-label="İş" tabindex="-1" lang="tr">
+  <form id="detail-form" class="sheet" autocomplete="off">
+    <div class="sheet-head">
+      <span id="detail-id" class="id"></span>
+      <span id="save-state" class="hint" role="status"></span>
+      <button type="button" id="detail-close" class="btn quiet">Kapat</button>
+    </div>
+    <label class="sr" for="f-title">Başlık</label>
+    <textarea id="f-title" class="title-input" rows="1" maxlength="160"></textarea>
+
+    <div class="field">
+      <span class="label" id="status-label">Durum</span>
+      <div id="f-status" class="seg-row" role="radiogroup" aria-labelledby="status-label">
+        <button type="button" class="seg" role="radio" data-status="inbox">Yeni</button>
+        <button type="button" class="seg" role="radio" data-status="todo">Sırada</button>
+        <button type="button" class="seg" role="radio" data-status="doing">Yapılıyor</button>
+        <button type="button" class="seg" role="radio" data-status="review">Onayını bekliyor</button>
+        <button type="button" class="seg" role="radio" data-status="blocked">Takıldı</button>
+        <button type="button" class="seg" role="radio" data-status="later">Sonra</button>
+        <button type="button" class="seg" role="radio" data-status="done">Bitti</button>
+        <button type="button" class="seg" role="radio" data-status="dropped">Vazgeçildi</button>
+      </div>
+    </div>
+
+    <div id="agent-note" class="quote" hidden>
+      <span class="label">Ajanın notu</span>
+      <p id="agent-note-text"></p>
+    </div>
+
+    <div id="reply-field" class="field" hidden>
+      <label for="f-reply">Cevabın</label>
+      <textarea id="f-reply" rows="2" maxlength="600"></textarea>
+      <span class="hint">Ajan sonraki oturumda okur. Birleştirme gibi geri alınamayan adımlarda yine sohbette sorar.</span>
+    </div>
+
+    <div class="field">
+      <label for="f-brief">Ne isteniyor?</label>
+      <textarea id="f-brief" rows="10" maxlength="20000"></textarea>
+      <span class="hint">Aklındaki gibi yaz. Ajan işi alırken okur; yapıyı o kurar, senin cümlelerini silmez.</span>
+    </div>
+
+    <div class="duo">
+      <div class="field">
+        <label for="f-group">Grup</label>
+        <input id="f-group" type="text" maxlength="40" list="group-list" placeholder="0.2, okuyucu…">
+        <datalist id="group-list"></datalist>
+      </div>
+      <div id="move-row" class="field w-only" hidden>
+        <span class="label">Sıradaki yeri</span>
+        <div class="tools">
+          <button type="button" class="btn" id="mv-top">En üste</button>
+          <button type="button" class="btn" id="mv-up">Yukarı</button>
+          <button type="button" class="btn" id="mv-down">Aşağı</button>
+        </div>
+      </div>
+    </div>
+
+    <details class="fold" id="agent-fields">
+      <summary>Ajanın doldurdukları<span id="fold-sum" class="hint"></span></summary>
+      <div class="fold-body">
+        <div class="field">
+          <label for="f-note">Durum notu</label>
+          <input id="f-note" type="text" maxlength="240">
+          <span class="hint">Tek cümle: ne çıktı, neyi bekliyor, neden takıldı.</span>
+        </div>
+        <div class="duo">
+          <div class="field">
+            <label for="f-owner">Kimde</label>
+            <input id="f-owner" type="text" maxlength="60" placeholder="oturum adı">
+          </div>
+          <div class="field">
+            <label for="f-ref">Bağlantı</label>
+            <input id="f-ref" type="text" maxlength="120" placeholder="#412">
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-deps">Önce bitmesi gerekenler</label>
+          <input id="f-deps" type="text" maxlength="200" placeholder="t003, t007">
+          <span id="deps-hint" class="hint err" hidden></span>
+        </div>
+      </div>
+    </details>
+
+    <div class="sheet-foot">
+      <span id="detail-meta" class="hint"></span>
+      <span class="del w-only">
+        <button type="button" class="btn quiet danger" id="del">Sil</button>
+        <span id="del-confirm" hidden>Silinsin mi?
+          <button type="button" class="btn danger" id="del-yes">Evet, sil</button>
+          <button type="button" class="btn quiet" id="del-no">Vazgeç</button>
+        </span>
+      </span>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="board-dialog" aria-labelledby="bd-title" lang="tr">
+  <form id="board-form" class="sheet" autocomplete="off">
+    <h2 id="bd-title" class="dlg-title">Panoyu düzenle</h2>
+    <div class="field">
+      <label for="b-project">Proje adı</label>
+      <input id="b-project" type="text" maxlength="60">
+    </div>
+    <div class="field">
+      <label for="b-goal">Şimdiki hedef</label>
+      <textarea id="b-goal" rows="2" maxlength="300"></textarea>
+      <span class="hint">Tek cümle. Her ajan oturum başında bunu okur.</span>
+    </div>
+    <div class="field">
+      <label for="b-due">Hedef tarih</label>
+      <input id="b-due" type="date">
+    </div>
+    <div class="field">
+      <label for="b-counters">Sıradaki boş numaralar</label>
+      <textarea id="b-counters" rows="3" placeholder="ADR = 82"></textarea>
+      <span class="hint">Satır başına “ad = sayı”. Paralel oturumlar numarasını buradan ayırır.</span>
+      <span id="b-err" class="hint err" hidden>Her satır “ad = sayı” biçiminde olmalı.</span>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn quiet" id="b-cancel">Vazgeç</button>
+      <button type="submit" class="btn primary">Kaydet</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const wrap = $("wrap");
+  const dlg = $("card-dialog");
+
+  const STATUS = {
+    inbox: { label: "Yeni", cls: "st-new" },
+    todo: { label: "Sırada", cls: "st-idle" },
+    doing: { label: "Yapılıyor", cls: "st-info" },
+    review: { label: "Onayını bekliyor", cls: "st-warn" },
+    blocked: { label: "Takıldı", cls: "st-bad" },
+    later: { label: "Sonra", cls: "st-idle" },
+    done: { label: "Bitti", cls: "st-ok" },
+    dropped: { label: "Vazgeçildi", cls: "st-idle" },
+  };
+  // A status the page does not know lands in "Yeni", so no card can vanish.
+  const statusOf = (t) => (STATUS[t.status] ? t.status : "inbox");
+  const ord = (t) => Number(t.order) || 0;
+  const closed = (t) => t.status === "done" || t.status === "dropped";
+  const byOrder = (a, b) => ord(a[1]) - ord(b[1]) || a[0].localeCompare(b[0]);
+  const byAt = (a, b) => String(a[1].at || "").localeCompare(String(b[1].at || "")) || a[0].localeCompare(b[0]);
+
+  // `drop` is the status a card takes when it is dragged into the lane.
+  const LANES = {
+    wait: { statuses: ["review", "blocked"], sort: byAt },
+    inbox: { statuses: ["inbox"], sort: (a, b) => byOrder(b, a), drop: "inbox", empty: "Aklına gelen işi yukarıya yaz. Ajan ilk oturumda ayrıntısını çıkarıp sıraya koyar." },
+    todo: { statuses: ["todo"], sort: byOrder, drop: "todo", empty: "Sırada iş yok. Bir işi buraya sürükleyebilirsin." },
+    doing: { statuses: ["doing"], sort: byAt, drop: "doing", empty: "Şu an yürüyen iş yok." },
+    later: { statuses: ["later"], sort: byOrder, drop: "later", empty: "Sonraya bırakılan iş yok." },
+    done: { statuses: ["done", "dropped"], sort: (a, b) => byAt(b, a), drop: "done", empty: "Henüz kapanan iş yok." },
+  };
+  const BOARD_LANES = ["inbox", "todo", "doing", "later", "done"];
+  // Long lanes open on their first cards; the state key says whether the viewer unfolded one.
+  const FOLDS = { later: "allLater", done: "allDone" };
+  const FOLD_SHOWN = 12;
+  const BRIEF_MARK = '<svg viewBox="0 0 12 12" width="13" height="13" aria-hidden="true"><path d="M1 2.5h10M1 6h10M1 9.5h6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="sr">açıklaması var</span>';
+
+  const state = {
+    db: null, canWrite: true,
+    meta: {}, metaExists: false, metaLoaded: false,
+    tasks: new Map(), loaded: false,
+    selected: null, group: "", q: "", allDone: false, allLater: false, flash: null,
+    briefUnsub: null, briefText: "", briefDirty: false,
+  };
+
+  /* ---------- small helpers ---------- */
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function today() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  function parseDay(s) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || "");
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  }
+  function daysFrom(day) {
+    const now = new Date();
+    return Math.round((day - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+  }
+  const fmtShort = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short" });
+  const fmtLong = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  function daysLeft(due) {
+    const n = daysFrom(due);
+    if (n === 0) return "bugün";
+    if (n === 1) return "yarın";
+    return n > 1 ? n + " gün kaldı" : -n + " gün geçti";
+  }
+  function since(day) {
+    const n = -daysFrom(day);
+    if (n <= 0) return "bugün başladı";
+    return n === 1 ? "dünden beri" : n + " gündür";
+  }
+  function same(a, b) {
+    const base = Array.isArray(b) ? [] : typeof b === "boolean" ? false : "";
+    return JSON.stringify(a == null ? base : a) === JSON.stringify(b);
+  }
+  function grow(ta, max) {
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight + 2, max) + "px";
+  }
+
+  let noticeKind = "";
+  function say(kind, msg) {
+    noticeKind = msg ? kind : "";
+    const n = $("notice");
+    n.textContent = msg || "";
+    n.hidden = !msg;
+  }
+
+  /* ---------- prefs (per viewer, optional) ---------- */
+  function loadPrefs() {
+    try {
+      state.group = localStorage.getItem("pano.group") || "";
+      state.allDone = localStorage.getItem("pano.allDone") === "1";
+      state.allLater = localStorage.getItem("pano.allLater") === "1";
+    } catch (e) { /* storage may be blocked */ }
+  }
+  function savePrefs() {
+    try {
+      localStorage.setItem("pano.group", state.group);
+      localStorage.setItem("pano.allDone", state.allDone ? "1" : "0");
+      localStorage.setItem("pano.allLater", state.allLater ? "1" : "0");
+    } catch (e) { /* storage may be blocked */ }
+  }
+
+  /* ---------- derived views ---------- */
+  function matches(id, t) {
+    if (state.group && String(t.group || "") !== state.group) return false;
+    if (!state.q) return true;
+    const hay = [id, t.title, t.note, t.reply, t.group, t.owner, t.ref].filter(Boolean).join(" ").toLocaleLowerCase("tr");
+    return hay.includes(state.q);
+  }
+  // `all` ignores the search and group filters: ordering must see the whole queue.
+  function itemsOf(key, all) {
+    const lane = LANES[key];
+    const out = [];
+    for (const [id, t] of state.tasks) {
+      if (!lane.statuses.includes(statusOf(t))) continue;
+      if (!all && !matches(id, t)) continue;
+      out.push([id, t]);
+    }
+    return out.sort(lane.sort);
+  }
+  function waitingOn(t) {
+    if (!Array.isArray(t.deps)) return [];
+    return t.deps.filter((d) => {
+      const x = state.tasks.get(d);
+      return x && !closed(x);
+    });
+  }
+
+  /* ---------- render ---------- */
+  function renderHeader() {
+    const m = state.meta;
+    $("project-name").textContent = m.project || "Pano";
+    const g = $("goal");
+    if (!state.metaLoaded) g.textContent = "Yükleniyor…";
+    else g.textContent = m.goal || "Hedef yazılmamış. “Panoyu düzenle” ile bir cümle ekle.";
+    g.classList.toggle("unset", !m.goal);
+    const dl = $("facts");
+    dl.replaceChildren();
+    const fact = (k, v) => {
+      const d = el("div", "fact");
+      d.append(el("dt", null, k), el("dd", null, v));
+      return d;
+    };
+    const due = parseDay(m.due);
+    if (due) dl.append(fact("Hedef tarih", fmtLong.format(due) + " · " + daysLeft(due)));
+    const cs = Object.entries(m.counters || {});
+    if (cs.length) dl.append(fact("Sıradaki boş numara", cs.map(([k, v]) => k + " " + v).join(" · ")));
+  }
+
+  function renderSummary() {
+    const box = $("summary");
+    box.replaceChildren();
+    if (!state.loaded) return;
+    const n = (key) => itemsOf(key).length;
+    const add = (count, label, hot) => {
+      const s = el("span", "sum" + (hot ? " hot" : ""));
+      s.append(el("b", null, String(count)), document.createTextNode(label));
+      box.append(s);
+    };
+    const open = itemsOf("wait").filter((x) => !x[1].reply).length;
+    if (open) add(open, "iş senin sözünü bekliyor", true);
+    else box.append(el("span", "sum", "Senden beklenen iş yok"));
+    add(n("doing"), "yapılıyor");
+    add(n("todo"), "sırada");
+    add(n("inbox"), "yeni");
+    add(n("done"), "kapandı");
+  }
+
+  function renderGroups() {
+    const set = new Set();
+    for (const t of state.tasks.values()) if (t.group) set.add(String(t.group));
+    const groups = [...set].sort((a, b) => a.localeCompare(b, "tr"));
+    if (state.loaded && state.group && !set.has(state.group)) state.group = "";
+    const box = $("groups");
+    box.hidden = groups.length === 0;
+    box.replaceChildren();
+    const mk = (g, label) => {
+      const b = el("button", "seg", label);
+      b.type = "button";
+      b.dataset.group = g;
+      b.setAttribute("aria-pressed", String(state.group === g));
+      return b;
+    };
+    box.append(mk("", "Tümü"));
+    for (const g of groups) box.append(mk(g, g));
+    const list = $("group-list");
+    list.replaceChildren();
+    for (const g of groups) {
+      const o = document.createElement("option");
+      o.value = g;
+      list.append(o);
+    }
+  }
+
+  function cardEl(id, t, key, rank) {
+    const st = statusOf(t);
+    const c = el("div", "card");
+    c.setAttribute("role", "button");
+    c.tabIndex = 0;
+    c.dataset.id = id;
+    if (state.canWrite) c.draggable = true;
+    if (id === state.flash) c.classList.add("flash");
+    if (key === "todo") c.append(el("span", "rank", String(rank)));
+    const body = el("div", "card-body");
+    if (key === "wait") body.append(el("span", "pill " + STATUS[st].cls, STATUS[st].label));
+    const title = el("span", "card-title", t.title || "(başlıksız)");
+    if (st === "dropped") title.classList.add("struck");
+    body.append(title);
+    if (t.note) body.append(el("span", "card-note", String(t.note)));
+    if (key === "wait") {
+      if (t.reply) body.append(el("span", "card-reply", "Cevabın: " + t.reply + " (ajan sonraki oturumda okuyacak)"));
+      else if (state.canWrite) body.append(el("span", "cta", "Cevap yaz"));
+    }
+    const meta = el("span", "card-meta");
+    meta.append(el("span", "id", id));
+    if (t.group) meta.append(el("span", "chip", String(t.group)));
+    const waits = closed(t) ? [] : waitingOn(t);
+    if (waits.length) meta.append(el("span", "chip soft", waits.join(", ") + " bitince"));
+    if (t.owner) meta.append(el("span", "chip", String(t.owner)));
+    if (t.ref) meta.append(el("span", "chip", String(t.ref)));
+    const day = parseDay(t.at);
+    if (day && key === "doing") meta.append(el("span", "when", since(day)));
+    if (day && key === "done") meta.append(el("span", "when", fmtShort.format(day)));
+    if (st === "dropped") meta.append(el("span", "pill st-idle", "Vazgeçildi"));
+    if (t.brief) {
+      const m = el("span", "mark");
+      m.innerHTML = BRIEF_MARK;
+      meta.append(m);
+    }
+    body.append(meta);
+    c.append(body);
+    return c;
+  }
+
+  function renderBoard() {
+    const active = document.activeElement;
+    const focusId = active && active.classList && active.classList.contains("card") ? active.dataset.id : null;
+    const filtered = !!(state.q || state.group);
+    for (const key of BOARD_LANES) {
+      const items = itemsOf(key);
+      $("count-" + key).textContent = state.loaded ? String(items.length) : "";
+      const frag = document.createDocumentFragment();
+      if (!state.loaded) frag.append(el("p", "empty", "Yükleniyor…"));
+      else if (!items.length) frag.append(el("p", "empty", filtered ? "Bu süzgeçte iş yok." : LANES[key].empty));
+      else {
+        // A search or a group filter looks through the whole lane, folded or not.
+        const folded = FOLDS[key] && !state[FOLDS[key]] && !filtered;
+        const shown = folded ? items.slice(0, FOLD_SHOWN) : items;
+        shown.forEach((x, i) => frag.append(cardEl(x[0], x[1], key, i + 1)));
+      }
+      $("cards-" + key).replaceChildren(frag);
+      if (FOLDS[key]) {
+        const more = $("more-" + key);
+        more.hidden = filtered || items.length <= FOLD_SHOWN;
+        more.textContent = state[FOLDS[key]] ? "Yalnızca ilk " + FOLD_SHOWN + " işi göster" : "Tümünü göster (" + items.length + ")";
+      }
+    }
+    const waits = itemsOf("wait");
+    $("turn").hidden = !state.loaded || waits.length === 0;
+    $("count-wait").textContent = String(waits.length);
+    const frag = document.createDocumentFragment();
+    for (const x of waits) frag.append(cardEl(x[0], x[1], "wait", 0));
+    $("cards-wait").replaceChildren(frag);
+    const ready = state.loaded && !!state.db && state.canWrite;
+    $("add-title").disabled = !ready;
+    $("add-btn").disabled = !ready;
+    if (focusId) {
+      const r = document.querySelector('.card[data-id="' + CSS.escape(focusId) + '"]');
+      if (r) r.focus({ preventScroll: true });
+    }
+  }
+
+  function setVal(id, v, force) {
+    const f = $(id);
+    if ((force || document.activeElement !== f) && f.value !== v) f.value = v;
+  }
+  function fillDetail(force) {
+    const id = state.selected;
+    const t = id ? state.tasks.get(id) : null;
+    if (id && !t && state.loaded) { deselect(); return; }
+    if (!t) return;
+    const st = statusOf(t);
+    $("detail-id").textContent = id;
+    setVal("f-title", String(t.title || ""), force);
+    grow($("f-title"), 240);
+    for (const b of $("f-status").querySelectorAll("[data-status]")) b.setAttribute("aria-checked", String(b.dataset.status === st));
+    setVal("f-group", String(t.group || ""), force);
+    setVal("f-owner", String(t.owner || ""), force);
+    setVal("f-ref", String(t.ref || ""), force);
+    setVal("f-deps", Array.isArray(t.deps) ? t.deps.join(", ") : "", force);
+    setVal("f-note", String(t.note || ""), force);
+    setVal("f-reply", String(t.reply || ""), force);
+    $("agent-note").hidden = !t.note;
+    $("agent-note-text").textContent = String(t.note || "");
+    $("reply-field").hidden = !(st === "review" || st === "blocked" || t.reply || document.activeElement === $("f-reply"));
+    $("move-row").hidden = st !== "todo";
+    const waits = closed(t) ? [] : waitingOn(t);
+    const parts = [t.owner, t.ref, waits.length ? waits.join(", ") + " bitince" : ""].filter(Boolean);
+    $("fold-sum").textContent = parts.length ? " · " + parts.join(" · ") : "";
+    const who = t.src === "agent" ? "Ajan ekledi" : t.src === "user" ? "Sen ekledin" : "";
+    const at = parseDay(t.at);
+    $("detail-meta").textContent = [who, at ? "son değişiklik " + fmtShort.format(at) : ""].filter(Boolean).join(" · ");
+  }
+
+  function render() {
+    renderHeader();
+    renderGroups();
+    renderSummary();
+    renderBoard();
+    fillDetail(false);
+  }
+
+  /* ---------- writes: one at a time per document ---------- */
+  const chains = new Map();
+  function write(path, fn) {
+    const run = (chains.get(path) || Promise.resolve()).then(fn);
+    chains.set(path, run.catch(() => {}));
+    run.then(() => {
+      $("save-state").textContent = "Kaydedildi " + new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+      if (noticeKind === "write") say("write", "");
+    }, (e) => {
+      const code = e && e.code;
+      if (code === "quota_exceeded") say("write", "Pano doldu. Yeni kayıt için eski işleri sil.");
+      else if (code === "invalid_argument" || code === "not_granted" || code === "revoked") say("write", "Kaydedilemedi: bu görünümden panoya yazılamıyor olabilir.");
+      else say("write", "Kaydedilemedi. Bağlantı gelince yeniden dene.");
+    });
+    return run;
+  }
+  const taskDoc = (id) => state.db.doc("tasks/" + id);
+  const patchTask = (id, patch) => write("tasks/" + id, () => taskDoc(id).update(patch));
+  function saveMeta(patch) {
+    return write("board/meta", async () => {
+      const ref = state.db.doc("board/meta");
+      if (state.metaExists) await ref.update(patch);
+      else { await ref.set({ ...state.meta, ...patch }); state.metaExists = true; }
+      state.meta = { ...state.meta, ...patch };
+    });
+  }
+
+  /* ---------- actions ---------- */
+  function addTask(raw) {
+    const lines = raw.split("\n");
+    const first = lines.shift().trim();
+    let rest = lines.join("\n").trim();
+    let title = first;
+    if (title.length > 110) {
+      // A long first line stays whole in the description; the card gets its opening words.
+      const cut = title.slice(0, 100);
+      const sp = cut.lastIndexOf(" ");
+      title = (sp > 60 ? cut.slice(0, sp) : cut) + "…";
+      rest = rest ? first + "\n" + rest : first;
+    }
+    let n = Number(state.meta.seq) || 0;
+    let top = 0;
+    for (const [id, t] of state.tasks) {
+      const m = /^t(\d+)$/.exec(id);
+      if (m) n = Math.max(n, Number(m[1]));
+      top = Math.max(top, ord(t));
+    }
+    n += 1;
+    const id = "t" + String(n).padStart(3, "0");
+    const body = { title, status: "inbox", order: top + 10, src: "user", at: today() };
+    if (rest) body.brief = true;
+    if (state.group) body.group = state.group;
+    state.tasks.set(id, body);
+    write("tasks/" + id, () => taskDoc(id).set(body));
+    if (rest) write("briefs/" + id, () => state.db.doc("briefs/" + id).set({ text: rest }));
+    saveMeta({ seq: n });
+    state.flash = id;
+    setTimeout(() => { if (state.flash === id) state.flash = null; }, 1600);
+    render();
+  }
+
+  // Puts a card into the queue between two cards the viewer sees; either may be null.
+  function placeInQueue(id, prevId, nextId) {
+    const t = state.tasks.get(id);
+    if (!t || !state.db) return;
+    const inQueue = statusOf(t) === "todo";
+    const full = itemsOf("todo", true).filter((x) => x[0] !== id);
+    let idx = full.length;
+    const at = (wanted) => full.findIndex((x) => x[0] === wanted);
+    if (nextId && at(nextId) >= 0) idx = at(nextId);
+    else if (prevId && at(prevId) >= 0) idx = at(prevId) + 1;
+    if (inQueue && itemsOf("todo", true).findIndex((x) => x[0] === id) === idx) return;
+    const extra = inQueue ? {} : { status: "todo", at: today() };
+    const prev = idx > 0 ? ord(full[idx - 1][1]) : null;
+    const next = idx < full.length ? ord(full[idx][1]) : null;
+    let order = null;
+    if (prev == null && next == null) order = 10;
+    else if (prev == null) order = next - 10;
+    else if (next == null) order = prev + 10;
+    else if ((prev + next) / 2 > prev && (prev + next) / 2 < next) order = (prev + next) / 2;
+    if (order != null) { patchTask(id, { ...extra, order }); return; }
+    // Neighbours share a number: give the whole queue fresh ones.
+    const ids = full.map((x) => x[0]);
+    ids.splice(idx, 0, id);
+    ids.forEach((x, i) => {
+      const want = (i + 1) * 10;
+      if (x === id) patchTask(x, { ...extra, order: want });
+      else if (ord(state.tasks.get(x)) !== want) patchTask(x, { order: want });
+    });
+  }
+  function nudge(how) {
+    const id = state.selected;
+    const seen = itemsOf("todo").map((x) => x[0]);
+    const i = seen.indexOf(id);
+    if (i < 0) return;
+    const others = seen.filter((x) => x !== id);
+    const j = how === "top" ? 0 : how === "up" ? i - 1 : i + 1;
+    if (j < 0 || j > others.length || j === i) return;
+    placeInQueue(id, j > 0 ? others[j - 1] : null, j < others.length ? others[j] : null);
+  }
+  function dropInto(id, key, prevId, nextId) {
+    const t = state.tasks.get(id);
+    if (!t || !state.db) return;
+    if (key === "todo") { placeInQueue(id, prevId, nextId); return; }
+    if (LANES[key].statuses.includes(statusOf(t))) return;
+    patchTask(id, { status: LANES[key].drop, at: today() });
+  }
+
+  let briefTimer = null;
+  function stopBriefTimer() {
+    if (briefTimer) { clearTimeout(briefTimer); briefTimer = null; }
+  }
+  function watchBrief(id) {
+    if (state.briefUnsub) { state.briefUnsub(); state.briefUnsub = null; }
+    const ta = $("f-brief");
+    ta.value = "";
+    state.briefText = "";
+    state.briefDirty = false;
+    if (!id || !state.db) return;
+    let first = true;
+    state.briefUnsub = state.db.doc("briefs/" + id).onSnapshot((snap) => {
+      if (state.selected !== id) return;
+      const d = snap.exists ? snap.data() : null;
+      state.briefText = d && typeof d.text === "string" ? d.text : "";
+      // Never replace text the viewer is in the middle of typing.
+      if (!state.briefDirty && (first || document.activeElement !== ta)) ta.value = state.briefText;
+      first = false;
+    }, () => {});
+  }
+  function saveBrief(id, raw) {
+    const t = state.tasks.get(id);
+    if (!t || !state.db || !state.canWrite) return;
+    const text = raw.replace(/\s+$/, "");
+    state.briefDirty = false;
+    if (text === state.briefText) return;
+    state.briefText = text;
+    const ref = state.db.doc("briefs/" + id);
+    if (text) {
+      write("briefs/" + id, () => ref.set({ text }));
+      if (!t.brief) patchTask(id, { brief: true });
+    } else {
+      write("briefs/" + id, () => ref.delete());
+      if (t.brief) patchTask(id, { brief: false });
+    }
+  }
+
+  function resetDel() {
+    $("del").hidden = false;
+    $("del-confirm").hidden = true;
+  }
+  function select(id, focusId) {
+    if (!state.tasks.has(id)) return;
+    state.selected = id;
+    resetDel();
+    stopBriefTimer();
+    $("deps-hint").hidden = true;
+    $("save-state").textContent = "";
+    watchBrief(id);
+    if (!dlg.open) dlg.showModal();
+    fillDetail(true);
+    (focusId ? $(focusId) : dlg).focus();
+  }
+  function deselect() {
+    // A field still being typed in commits on blur, while the card is still selected.
+    const active = document.activeElement;
+    if (active && dlg.contains(active) && active !== dlg) active.blur();
+    state.selected = null;
+    stopBriefTimer();
+    watchBrief(null);
+    if (dlg.open) dlg.close();
+  }
+
+  /* ---------- events: board ---------- */
+  function openFrom(e) {
+    const c = e.target.closest ? e.target.closest(".card") : null;
+    if (!c) return false;
+    const t = state.tasks.get(c.dataset.id);
+    const asks = t && (t.status === "review" || t.status === "blocked") && !t.reply && state.canWrite;
+    select(c.dataset.id, asks ? "f-reply" : null);
+    return true;
+  }
+  $("wrap").addEventListener("click", openFrom);
+  $("wrap").addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("card")) {
+      e.preventDefault();
+      openFrom(e);
+    }
+  });
+  $("groups").addEventListener("click", (e) => {
+    const b = e.target.closest(".seg");
+    if (!b) return;
+    state.group = b.dataset.group;
+    savePrefs();
+    render();
+  });
+  $("q").addEventListener("input", () => {
+    state.q = $("q").value.trim().toLocaleLowerCase("tr");
+    renderSummary();
+    renderBoard();
+  });
+  for (const key of Object.keys(FOLDS)) {
+    $("more-" + key).addEventListener("click", () => {
+      state[FOLDS[key]] = !state[FOLDS[key]];
+      savePrefs();
+      renderBoard();
+    });
+  }
+  $("add-title").addEventListener("input", () => grow($("add-title"), 280));
+  $("add-title").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      $("add-form").requestSubmit();
+    }
+  });
+  $("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const inp = $("add-title");
+    const raw = inp.value.trim();
+    if (!raw || !state.db || !state.canWrite || !state.loaded) return;
+    inp.value = "";
+    grow(inp, 280);
+    addTask(raw);
+  });
+
+  /* ---------- events: drag and drop ---------- */
+  const dropLine = el("div", "drop-line");
+  dropLine.hidden = true;
+  let drag = null;
+  function clearDrag() {
+    for (const l of document.querySelectorAll(".lane.over")) l.classList.remove("over");
+    for (const c of document.querySelectorAll(".card.dragging")) c.classList.remove("dragging");
+    dropLine.hidden = true;
+    drag = null;
+  }
+  document.addEventListener("dragstart", (e) => {
+    const c = e.target.closest ? e.target.closest(".card") : null;
+    if (!c || !state.canWrite) return;
+    drag = { id: c.dataset.id, lane: null, prevId: null, nextId: null };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", c.dataset.id);
+    requestAnimationFrame(() => c.classList.add("dragging"));
+  });
+  document.addEventListener("dragend", clearDrag);
+  $("board").addEventListener("dragover", (e) => {
+    const laneEl = drag && e.target.closest ? e.target.closest(".lane") : null;
+    if (!laneEl) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const key = laneEl.dataset.lane;
+    if (drag.lane !== key) {
+      for (const l of document.querySelectorAll(".lane.over")) l.classList.remove("over");
+      laneEl.classList.add("over");
+      drag.lane = key;
+    }
+    if (key !== "todo") { dropLine.hidden = true; return; }
+    const box = $("cards-todo");
+    const cards = [...box.querySelectorAll(".card")].filter((c) => c.dataset.id !== drag.id);
+    let idx = cards.length;
+    for (let i = 0; i < cards.length; i += 1) {
+      const r = cards[i].getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { idx = i; break; }
+    }
+    drag.nextId = idx < cards.length ? cards[idx].dataset.id : null;
+    drag.prevId = idx > 0 ? cards[idx - 1].dataset.id : null;
+    if (dropLine.parentNode !== box) box.append(dropLine);
+    let y = 0;
+    if (idx < cards.length) y = cards[idx].offsetTop - 4;
+    else if (cards.length) y = cards[cards.length - 1].offsetTop + cards[cards.length - 1].offsetHeight + 4;
+    dropLine.style.top = (y - 1.5) + "px";
+    dropLine.hidden = false;
+  });
+  $("board").addEventListener("dragleave", (e) => {
+    const laneEl = e.target.closest ? e.target.closest(".lane") : null;
+    if (!laneEl || (e.relatedTarget && laneEl.contains(e.relatedTarget))) return;
+    laneEl.classList.remove("over");
+    if (drag && drag.lane === laneEl.dataset.lane) { drag.lane = null; dropLine.hidden = true; }
+  });
+  $("board").addEventListener("drop", (e) => {
+    const laneEl = drag && e.target.closest ? e.target.closest(".lane") : null;
+    if (!laneEl) return;
+    e.preventDefault();
+    const d = drag;
+    clearDrag();
+    dropInto(d.id, laneEl.dataset.lane, d.prevId, d.nextId);
+  });
+
+  /* ---------- events: card dialog ---------- */
+  dlg.addEventListener("cancel", (e) => { e.preventDefault(); deselect(); });
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) deselect(); });
+  $("detail-close").addEventListener("click", deselect);
+  $("detail-form").addEventListener("submit", (e) => e.preventDefault());
+
+  const RESTORE = {};
+  function onField(fieldId, make) {
+    const f = $(fieldId);
+    f.addEventListener("change", () => {
+      const id = state.selected;
+      const t = id && state.tasks.get(id);
+      if (!t || !state.db || !state.canWrite) return;
+      const patch = make(f.value, t, id);
+      if (patch === RESTORE) { fillDetail(true); return; }
+      if (!patch) return;
+      const real = {};
+      let n = 0;
+      for (const k of Object.keys(patch)) {
+        if (!same(t[k], patch[k])) { real[k] = patch[k]; n += 1; }
+      }
+      if (n) patchTask(id, real);
+    });
+    if (f.tagName === "INPUT" || f.id === "f-title") {
+      f.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); f.blur(); }
+      });
+    }
+  }
+  onField("f-title", (v) => (v.trim() ? { title: v.replace(/\s+/g, " ").trim() } : RESTORE));
+  onField("f-group", (v) => ({ group: v.trim() }));
+  onField("f-owner", (v) => ({ owner: v.trim() }));
+  onField("f-ref", (v) => ({ ref: v.trim() }));
+  onField("f-note", (v) => ({ note: v.trim() }));
+  onField("f-reply", (v) => ({ reply: v.trim() }));
+  onField("f-deps", (v, t, id) => {
+    const ids = [...new Set(v.split(/[\s,;]+/).filter(Boolean))];
+    const hint = $("deps-hint");
+    const bad = ids.filter((d) => !state.tasks.has(d));
+    if (ids.includes(id)) { hint.textContent = "Bir iş kendini bekleyemez."; hint.hidden = false; return null; }
+    if (bad.length) { hint.textContent = "Bu numarayla iş yok: " + bad.join(", "); hint.hidden = false; return null; }
+    hint.hidden = true;
+    return { deps: ids };
+  });
+  $("f-title").addEventListener("input", () => grow($("f-title"), 240));
+  $("f-status").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-status]");
+    const id = state.selected;
+    const t = id && state.tasks.get(id);
+    if (!b || !t || !state.db || !state.canWrite || b.dataset.status === statusOf(t)) return;
+    patchTask(id, { status: b.dataset.status, at: today() });
+  });
+
+  $("f-brief").addEventListener("input", () => {
+    const id = state.selected;
+    state.briefDirty = true;
+    stopBriefTimer();
+    briefTimer = setTimeout(() => {
+      briefTimer = null;
+      if (state.selected === id) saveBrief(id, $("f-brief").value);
+    }, 1500);
+  });
+  $("f-brief").addEventListener("change", () => {
+    stopBriefTimer();
+    if (state.selected) saveBrief(state.selected, $("f-brief").value);
+  });
+
+  $("mv-top").addEventListener("click", () => nudge("top"));
+  $("mv-up").addEventListener("click", () => nudge("up"));
+  $("mv-down").addEventListener("click", () => nudge("down"));
+
+  $("del").addEventListener("click", () => {
+    $("del").hidden = true;
+    $("del-confirm").hidden = false;
+  });
+  $("del-no").addEventListener("click", resetDel);
+  $("del-yes").addEventListener("click", () => {
+    const id = state.selected;
+    if (!id || !state.db) return;
+    state.selected = null;
+    stopBriefTimer();
+    watchBrief(null);
+    if (dlg.open) dlg.close();
+    state.tasks.delete(id);
+    write("tasks/" + id, () => taskDoc(id).delete());
+    write("briefs/" + id, () => state.db.doc("briefs/" + id).delete());
+    resetDel();
+    render();
+  });
+
+  /* ---------- events: board dialog ---------- */
+  const boardDlg = $("board-dialog");
+  $("edit-board").addEventListener("click", () => {
+    const m = state.meta;
+    $("b-project").value = m.project || "";
+    $("b-goal").value = m.goal || "";
+    $("b-due").value = m.due || "";
+    $("b-counters").value = Object.entries(m.counters || {}).map(([k, v]) => k + " = " + v).join("\n");
+    $("b-err").hidden = true;
+    boardDlg.showModal();
+  });
+  $("b-cancel").addEventListener("click", () => boardDlg.close());
+  boardDlg.addEventListener("click", (e) => { if (e.target === boardDlg) boardDlg.close(); });
+  $("board-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!state.db) return;
+    const counters = {};
+    for (const raw of $("b-counters").value.split("\n")) {
+      const lineText = raw.trim();
+      if (!lineText) continue;
+      const m = /^([^=:]+?)\s*[=:]\s*(\d+)$/.exec(lineText);
+      if (!m) { $("b-err").hidden = false; return; }
+      counters[m[1].trim()] = Number(m[2]);
+    }
+    const next = {
+      project: $("b-project").value.trim(),
+      goal: $("b-goal").value.trim(),
+      due: $("b-due").value,
+      counters,
+    };
+    const dropped = Object.keys(state.meta.counters || {}).some((k) => !(k in counters));
+    write("board/meta", async () => {
+      const ref = state.db.doc("board/meta");
+      // update() merges nested objects, so a removed counter needs a full replace.
+      if (state.metaExists && !dropped) await ref.update(next);
+      else { await ref.set({ ...state.meta, ...next }); state.metaExists = true; }
+      state.meta = { ...state.meta, ...next };
+      renderHeader();
+    });
+    boardDlg.close();
+  });
+
+  /* ---------- boot ---------- */
+  function readOnly() {
+    state.canWrite = false;
+    wrap.classList.add("ro");
+    for (const f of document.querySelectorAll("#detail-form input, #detail-form textarea, #f-status button")) f.disabled = true;
+    renderBoard();
+  }
+
+  async function boot() {
+    loadPrefs();
+    render();
+    const claude = window.claude;
+    const db = claude && typeof claude.use === "function" ? await claude.use("db") : null;
+    if (!db) {
+      state.loaded = true;
+      state.metaLoaded = true;
+      readOnly();
+      render();
+      say("load", "Pano verisine bu görünümden ulaşılamıyor. Sayfayı claude.ai'de, oturumun açıkken aç.");
+      return;
+    }
+    state.db = db;
+    let timer = setTimeout(() => say("load", "Veriye henüz ulaşılamadı. Bağlantı gelince pano kendiliğinden dolar."), 10000);
+    const settled = (snap) => {
+      if (snap.metadata && snap.metadata.fromCache) return;
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (noticeKind === "load") say("load", "");
+    };
+    const dead = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      say("load", "Pano verisine şu an ulaşılamıyor.");
+    };
+    db.doc("board/meta").onSnapshot((snap) => {
+      state.metaExists = snap.exists;
+      state.meta = snap.exists ? { ...snap.data() } : {};
+      state.metaLoaded = true;
+      settled(snap);
+      renderHeader();
+    }, dead);
+    db.collection("tasks").limit(1000).onSnapshot((snap) => {
+      const m = new Map();
+      for (const d of snap.docs) m.set(d.id, d.data());
+      state.tasks = m;
+      state.loaded = true;
+      settled(snap);
+      render();
+    }, dead);
+    const user = await claude.use("user");
+    const can = user ? await user.can("data.write") : null;
+    if (can === false) readOnly();
+  }
+  boot();
+})();
+</script>

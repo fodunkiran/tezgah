@@ -1,0 +1,8 @@
+{
+  "name": "orkestra",
+  "description": "A procedure for running a wave of parallel worker sessions: brief, review, land in order, tidy. Written for the Claude desktop app's Code tab.",
+  "author": {
+    "name": "Furkan ODUNKIRAN"
+  },
+  "keywords": ["orchestration", "worktrees", "review", "pull-requests"]
+}
