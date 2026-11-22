@@ -164,32 +164,90 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 dialog { box-sizing: border-box; width: min(48rem, calc(100vw - 32px)); max-height: calc(100vh - 48px); max-height: calc(100dvh - 48px); padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 16px/1.5 var(--font-text); }
 dialog::backdrop { background: var(--scrim); }
 .sheet { display: grid; gap: 18px; padding: 24px; }
-.sheet-head { display: flex; align-items: center; gap: 14px; }
-.sheet-head .btn { margin-left: auto; }
-.title-input { padding: 6px 10px; margin-inline: -10px; width: calc(100% + 20px); border-color: transparent; resize: none; overflow: hidden; font: 600 24px/1.25 var(--font-head); }
-.title-input:hover, .title-input:focus { border-color: var(--line); }
 .field { display: grid; gap: 6px; min-width: 0; }
-.field label, .label { font-weight: 500; font-size: 15px; }
-.seg-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 18px; align-items: start; }
-.quote { display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--lane); }
-.quote p { margin: 0; overflow-wrap: anywhere; }
-.fold { border-top: 1px solid var(--line); padding-top: 14px; }
-.fold summary { cursor: pointer; font-weight: 500; font-size: 15px; }
-.fold summary .hint { font-weight: 400; }
-.fold-body { display: grid; gap: 16px; padding-top: 14px; }
-.sheet-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-top: 14px; border-top: 1px solid var(--line); }
-.del { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+.field label { font-weight: 500; font-size: 15px; }
 .dlg-title { margin: 0; font: 600 22px/1.2 var(--font-head); }
 .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .foot { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 .foot p { margin: 0; max-width: 80ch; }
 
+/* A card's own screen: it reads first, and each value changes where it stands */
+#card-dialog { width: min(68rem, calc(100vw - 32px)); }
+#card-dialog:focus, #card-dialog:focus-visible { outline: none; }
+.sheet-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px; box-sizing: border-box; min-height: 52px; padding: 8px 12px 8px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.sheet-head #detail-close { margin-left: auto; }
+.detail-body { display: grid; gap: 20px; padding: 20px 24px 28px; }
+.title-block { display: grid; gap: 10px; }
+.title-input { box-sizing: border-box; width: calc(100% + 20px); margin-inline: -10px; padding: 4px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); resize: none; overflow: hidden; font: 600 27px/1.25 var(--font-head); letter-spacing: -.005em; }
+.title-input:hover:not(:disabled) { border-color: var(--line); }
+.title-input:focus { border-color: var(--accent); outline: none; }
+.title-input:disabled { opacity: 1; cursor: default; }
+.state-line { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.deps-wait { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 14px; color: var(--muted); }
+.detail-cols { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 28px 40px; align-items: start; }
+.detail-main { display: grid; gap: 22px; min-width: 0; }
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+.block-title { margin: 0; font: 600 15px/1.3 var(--font-text); }
+.ask { display: grid; gap: 10px; padding: 14px 16px; border: 1px solid var(--turn-line); border-radius: 10px; background: var(--turn-bg); }
+.ask-note { margin: 0; overflow-wrap: anywhere; }
+.ask-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+.note-box { display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--lane); }
+.note-box p { margin: 0; overflow-wrap: anywhere; }
+.brief-block { display: grid; gap: 8px; min-width: 0; }
+#f-brief { min-height: 14rem; }
+
+/* A brief is plain text; it is drawn for reading */
+.prose { display: grid; gap: 10px; max-width: 72ch; line-height: 1.6; overflow-wrap: anywhere; }
+.prose > * { margin: 0; }
+.prose .p-h { margin-top: 10px; font: 500 12.5px/1.3 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.prose .p-h:first-child { margin-top: 0; }
+.prose ul, .prose ol { display: grid; gap: 4px; padding-left: 1.4em; }
+.prose li.sub { margin-left: 1.2em; list-style-type: circle; }
+.prose blockquote { padding-left: 14px; border-left: 3px solid var(--line); color: var(--muted); }
+.prose code { padding: 0 4px; border-radius: 4px; background: var(--lane); font: 500 .88em var(--font-mono); }
+.prose pre { overflow-x: auto; padding: 10px 12px; border-radius: 6px; background: var(--lane); font: 13.5px/1.5 var(--font-mono); white-space: pre; }
+.muted { color: var(--muted); }
+.ref { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font: 500 13px/1.55 var(--font-mono); cursor: pointer; }
+.ref:hover { border-color: var(--muted); background: var(--hover); }
+
+/* Properties on the side read as text; hovering shows that they can change */
+.detail-side { display: grid; min-width: 0; }
+.props { display: grid; gap: 6px; margin: 0; padding-block: 12px; border-top: 1px solid var(--line); }
+.props:first-child { padding-top: 0; border-top: 0; }
+.prop { display: grid; min-width: 0; }
+.prop dt { font-size: 13px; color: var(--muted); }
+.prop dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.prop dd.text { padding-block: 5px; font-size: 15px; }
+#follow-refs { display: flex; flex-wrap: wrap; gap: 4px; }
+.props .inline { box-sizing: border-box; width: calc(100% + 8px); margin-left: -8px; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ink); font: 15px/1.4 var(--font-text); }
+.props .inline:hover:not(:disabled) { border-color: var(--line); }
+.props .inline:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+.props .inline:disabled { opacity: 1; cursor: default; }
+.props select.inline { appearance: none; -webkit-appearance: none; padding-right: 28px; cursor: pointer; }
+.props select.inline:disabled { cursor: default; }
+.sel { position: relative; display: block; }
+.sel::after { content: ""; position: absolute; right: 8px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.ro .sel::after, .sel.off::after { display: none; }
+.place { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-top: 4px; }
+.place .id { margin-right: 4px; }
+.btn.small { padding: 4px 10px; font-size: 13.5px; }
+.del { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; }
+#del-confirm { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+@media (max-width: 860px) {
+  .detail-cols { grid-template-columns: minmax(0, 1fr); }
+  .props { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; }
+  .props:first-child { padding-top: 12px; border-top: 1px solid var(--line); }
+  #row-place { grid-column: 1 / -1; }
+}
 @media (max-width: 600px) {
   h1 { font-size: 30px; }
   .bar input { width: 100%; }
-  dialog { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; }
+  dialog, #card-dialog { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; }
   .sheet { padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)); }
+  .sheet-head { padding: calc(env(safe-area-inset-top, 0px) + 6px) max(8px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px)); }
+  .detail-body { padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 28px) max(16px, env(safe-area-inset-left, 0px)); }
+  .title-input { font-size: 23px; }
 }
 </style>
 
@@ -287,115 +345,76 @@ dialog::backdrop { background: var(--scrim); }
   </div>
 </div>
 
-<dialog id="card-dialog" tabindex="-1">
-  <form id="detail-form" class="sheet" autocomplete="off">
+<dialog id="card-dialog" tabindex="-1" aria-labelledby="f-title">
+  <form id="detail-form" class="detail" autocomplete="off">
     <div class="sheet-head">
+      <button type="button" id="detail-back" class="btn quiet small" hidden></button>
       <span id="detail-id" class="id"></span>
       <span id="save-state" class="hint" role="status"></span>
       <button type="button" id="detail-close" class="btn quiet" data-t="close"></button>
     </div>
-    <label class="sr" for="f-title" data-t="title"></label>
-    <textarea id="f-title" class="title-input" rows="1" maxlength="160"></textarea>
-
-    <div class="field">
-      <span class="label" id="status-label" data-t="status"></span>
-      <div id="f-status" class="seg-row" role="radiogroup" aria-labelledby="status-label"></div>
-    </div>
-
-    <div class="duo">
-      <div class="field">
-        <span class="label" id="ball-label" data-t="ball"></span>
-        <div id="f-ball" class="seg-row" role="radiogroup" aria-labelledby="ball-label"></div>
+    <div class="detail-body">
+      <div class="title-block">
+        <textarea id="f-title" class="title-input" rows="1" maxlength="160" data-ta="title"></textarea>
+        <div id="state-line" class="state-line"></div>
       </div>
-      <div id="waiting-field" class="field" hidden>
-        <label for="f-waiting" data-t="waiting"></label>
-        <input id="f-waiting" type="text" maxlength="80">
-      </div>
-    </div>
-
-    <div id="agent-note" class="quote" hidden>
-      <span class="label" data-t="agentNote"></span>
-      <p id="agent-note-text"></p>
-    </div>
-
-    <div id="reply-field" class="field" hidden>
-      <label for="f-reply" data-t="reply"></label>
-      <textarea id="f-reply" rows="2" maxlength="600"></textarea>
-      <span class="hint" data-t="replyHint"></span>
-    </div>
-
-    <div class="field">
-      <label for="f-brief" data-t="brief"></label>
-      <textarea id="f-brief" rows="10" maxlength="20000"></textarea>
-      <span class="hint" data-t="briefHint"></span>
-    </div>
-
-    <div class="duo">
-      <div class="field">
-        <label for="f-milestone" data-t="milestone"></label>
-        <select id="f-milestone"></select>
-      </div>
-      <div class="field">
-        <label for="f-area" data-t="area"></label>
-        <input id="f-area" type="text" maxlength="40" list="area-list">
-        <datalist id="area-list"></datalist>
-      </div>
-      <div class="field">
-        <label for="f-kind" data-t="kind"></label>
-        <select id="f-kind"></select>
-      </div>
-    </div>
-
-    <div id="move-row" class="field w-only" hidden>
-      <span class="label" data-t="place"></span>
-      <div class="tools">
-        <button type="button" class="btn" id="mv-top" data-t="toTop"></button>
-        <button type="button" class="btn" id="mv-up" data-t="up"></button>
-        <button type="button" class="btn" id="mv-down" data-t="down"></button>
-      </div>
-    </div>
-
-    <details class="fold" id="agent-fields">
-      <summary><span data-t="agentFields"></span><span id="fold-sum" class="hint"></span></summary>
-      <div class="fold-body">
-        <div class="field">
-          <label for="f-note" data-t="note"></label>
-          <input id="f-note" type="text" maxlength="240">
-          <span class="hint" data-t="noteHint"></span>
+      <div id="detail-cols" class="detail-cols">
+        <div class="detail-main">
+          <section id="ask" class="ask" aria-labelledby="ask-title" hidden>
+            <h3 id="ask-title" class="block-title" data-t="askTitle"></h3>
+            <p id="ask-note" class="ask-note"></p>
+            <textarea id="f-reply" rows="3" maxlength="600" data-tp="replyPh" data-ta="reply"></textarea>
+            <div class="ask-foot">
+              <span class="hint" data-t="replyHint"></span>
+              <button type="button" id="reply-save" class="btn primary w-only"></button>
+            </div>
+          </section>
+          <section id="agent-note" class="note-box" aria-labelledby="note-title" hidden>
+            <h3 id="note-title" class="block-title" data-t="agentNote"></h3>
+            <p id="agent-note-text"></p>
+          </section>
+          <section class="brief-block" aria-labelledby="brief-title">
+            <div class="block-head">
+              <h3 id="brief-title" class="block-title" data-t="brief"></h3>
+              <button type="button" id="brief-edit" class="btn quiet small w-only"></button>
+            </div>
+            <div id="brief-view" class="prose"></div>
+            <div id="brief-editor" class="field" hidden>
+              <textarea id="f-brief" rows="12" maxlength="20000" data-ta="brief"></textarea>
+              <span class="hint" data-t="briefHint"></span>
+            </div>
+          </section>
         </div>
-        <div class="duo">
-          <div class="field">
-            <label for="f-owner" data-t="owner"></label>
-            <input id="f-owner" type="text" maxlength="60">
+        <aside class="detail-side" data-ta="props">
+          <dl class="props">
+            <div class="prop"><dt><label for="f-status" data-t="status"></label></dt><dd><span class="sel"><select id="f-status" class="inline"></select></span></dd></div>
+            <div class="prop"><dt><label for="f-ball" data-t="ball"></label></dt><dd><span class="sel"><select id="f-ball" class="inline"></select></span></dd></div>
+            <div class="prop" id="row-waiting" hidden><dt><label for="f-waiting" data-t="waiting"></label></dt><dd><input id="f-waiting" class="inline" type="text" maxlength="80" data-tp="dash"></dd></div>
+            <div class="prop w-only" id="row-place" hidden><dt data-t="place"></dt><dd class="place"><span id="place-num" class="id"></span><button type="button" class="btn small" id="mv-top" data-t="toTop"></button><button type="button" class="btn small" id="mv-up" data-ta="up">↑</button><button type="button" class="btn small" id="mv-down" data-ta="down">↓</button></dd></div>
+          </dl>
+          <dl class="props">
+            <div class="prop"><dt><label for="f-milestone" data-t="milestone"></label></dt><dd><span class="sel"><select id="f-milestone" class="inline"></select></span></dd></div>
+            <div class="prop"><dt><label for="f-area" data-t="area"></label></dt><dd><input id="f-area" class="inline" type="text" maxlength="40" list="area-list" data-tp="dash"><datalist id="area-list"></datalist></dd></div>
+            <div class="prop"><dt><label for="f-kind" data-t="kind"></label></dt><dd><span class="sel"><select id="f-kind" class="inline"></select></span></dd></div>
+            <div class="prop"><dt><label for="f-deps" data-t="deps"></label></dt><dd><input id="f-deps" class="inline" type="text" maxlength="200" data-tp="dash"><span id="deps-hint" class="hint err" hidden></span></dd></div>
+          </dl>
+          <dl class="props" id="props-work">
+            <div class="prop" id="row-owner" hidden><dt><label for="f-owner" data-t="owner"></label></dt><dd><input id="f-owner" class="inline" type="text" maxlength="60"></dd></div>
+            <div class="prop" id="row-prs" hidden><dt><label for="f-prs" data-t="prs"></label></dt><dd><input id="f-prs" class="inline" type="text" maxlength="120"></dd></div>
+            <div class="prop" id="row-reqs" hidden><dt><label for="f-reqs" data-t="reqs"></label></dt><dd><input id="f-reqs" class="inline" type="text" maxlength="200"></dd></div>
+            <div class="prop" id="row-wave" hidden><dt data-t="wave"></dt><dd id="wave-text" class="text"></dd></div>
+            <div class="prop" id="row-follow" hidden><dt data-t="follow"></dt><dd id="follow-refs" class="text"></dd></div>
+          </dl>
+          <dl class="props" id="props-dates"></dl>
+          <div class="del w-only">
+            <button type="button" class="btn quiet danger small" id="del" data-t="del"></button>
+            <span id="del-confirm" hidden><span data-t="delAsk"></span>
+              <button type="button" class="btn danger small" id="del-yes" data-t="delYes"></button>
+              <button type="button" class="btn quiet small" id="del-no" data-t="cancel"></button>
+            </span>
           </div>
-          <div class="field">
-            <label for="f-prs" data-t="prs"></label>
-            <input id="f-prs" type="text" maxlength="120" placeholder="412, 415">
-          </div>
-        </div>
-        <div class="duo">
-          <div class="field">
-            <label for="f-deps" data-t="deps"></label>
-            <input id="f-deps" type="text" maxlength="200" placeholder="t003, t007">
-            <span id="deps-hint" class="hint err" hidden></span>
-          </div>
-          <div class="field">
-            <label for="f-reqs" data-t="reqs"></label>
-            <input id="f-reqs" type="text" maxlength="200" placeholder="F-75, ADR 0083">
-          </div>
-        </div>
+        </aside>
       </div>
-    </details>
-
-    <div class="sheet-foot">
-      <span id="detail-meta" class="hint"></span>
-      <span class="del w-only">
-        <button type="button" class="btn quiet danger" id="del" data-t="del"></button>
-        <span id="del-confirm" hidden><span data-t="delAsk"></span>
-          <button type="button" class="btn danger" id="del-yes" data-t="delYes"></button>
-          <button type="button" class="btn quiet" id="del-no" data-t="cancel"></button>
-        </span>
-      </span>
     </div>
   </form>
 </dialog>
@@ -461,15 +480,20 @@ dialog::backdrop { background: var(--scrim); }
       waveState: { planning: "planlanıyor", running: "yürüyor", landing: "iniyor", closed: "kapandı" },
       status: "Durum", ball: "Sıra kimde", waiting: "Kimi bekliyor", agentNote: "Ajanın notu",
       reply: "Cevabın", replyHint: "Ajan sonraki oturumda okur. Birleştirme gibi geri alınamayan adımlarda yine sohbette sorar.",
-      brief: "Ne isteniyor?", briefHint: "Aklındaki gibi yaz. Ajan işi alırken okur; yapıyı o kurar, senin cümlelerini silmez.",
+      brief: "Açıklama", briefHint: "Aklındaki gibi yaz. Ajan işi alırken okur; yapıyı o kurar, senin cümlelerini silmez.",
+      noBrief: "Açıklama yok.", edit: "Düzenle", briefWrite: "Açıklama yaz", briefDone: "Bitti",
       milestone: "Kilometre taşı", none: "Yok", area: "Alan", kind: "Tür",
       place: "Sıradaki yeri", toTop: "En üste", up: "Yukarı", down: "Aşağı",
-      agentFields: "Ajanın doldurdukları", note: "Durum notu", noteHint: "Tek cümle: ne çıktı, neyi bekliyor, neden takıldı.",
+      askTitle: "Senden beklenen", askFallback: "Ajan bu işte senden bir söz ya da karar bekliyor.",
+      replyPh: "Cevabını yaz", replySave: "Cevabı kaydet", replyUpdate: "Cevabı güncelle",
+      yourMove: "Sıra sende", queuePos: (n) => n + ". sırada", closedAt: (d) => "Kapandı: " + d,
+      notShaped: "Henüz şekillenmedi", keptLater: "Sıraya alınmadı", afterParts: ["", "bitince"],
       owner: "Kimde", prs: "Pull request'ler", deps: "Önce bitmesi gerekenler", reqs: "Gereksinimler ve kararlar",
       depsSelf: "Bir iş kendini bekleyemez.", close: "Kapat", title: "Başlık",
       del: "Sil", delAsk: "Silinsin mi?", delYes: "Evet, sil", cancel: "Vazgeç", save: "Kaydet",
       saved: (t) => "Kaydedildi " + t,
-      byAgent: "Ajan ekledi", byUser: "Sen ekledin", opened: "açıldı", started: "başladı", closedOn: "kapandı",
+      follow: "Devamı", addedBy: "Ekleyen", dOpened: "Açıldı", dStarted: "Başladı", dClosed: "Kapandı", dStatus: "Durum değişti",
+      refMissing: (id) => id + " bu projenin panosunda yok.", dash: "—", props: "Özellikler", back: "Geri",
       pName: "Proje adı", pGoal: "Şimdiki hedef", pGoalHint: "Tek cümle. Her ajan oturum başında bunu okur.",
       pCounters: "Sıradaki boş numaralar", pCountersHint: "Satır başına “ad = sayı”. Paralel oturumlar numarasını buradan ayırır.",
       pErr: "Her satır “ad = sayı” biçiminde olmalı.",
@@ -515,15 +539,20 @@ dialog::backdrop { background: var(--scrim); }
       waveState: { planning: "planning", running: "running", landing: "landing", closed: "closed" },
       status: "Status", ball: "Whose move", waiting: "Waiting on", agentNote: "Agent's note",
       reply: "Your answer", replyHint: "An agent reads it next session. For a step that cannot be undone, such as a merge, it still asks in the chat.",
-      brief: "What is wanted?", briefHint: "Write it as it comes. An agent reads it when it takes the card; it adds structure and keeps your sentences.",
+      brief: "Description", briefHint: "Write it as it comes. An agent reads it when it takes the card; it adds structure and keeps your sentences.",
+      noBrief: "No description.", edit: "Edit", briefWrite: "Write a description", briefDone: "Done",
       milestone: "Milestone", none: "None", area: "Area", kind: "Kind",
       place: "Place in queue", toTop: "To top", up: "Up", down: "Down",
-      agentFields: "Filled in by agents", note: "Status note", noteHint: "One sentence: what came out, what it waits for, why it is stuck.",
+      askTitle: "What it needs from you", askFallback: "An agent waits for your word or decision on this card.",
+      replyPh: "Write your answer", replySave: "Save answer", replyUpdate: "Update answer",
+      yourMove: "Your move", queuePos: (n) => "number " + n + " in the queue", closedAt: (d) => "Closed " + d,
+      notShaped: "Not shaped yet", keptLater: "Kept out of the queue", afterParts: ["after", ""],
       owner: "Taken by", prs: "Pull requests", deps: "Must close first", reqs: "Requirements and decisions",
       depsSelf: "A card cannot wait on itself.", close: "Close", title: "Title",
       del: "Delete", delAsk: "Delete this card?", delYes: "Yes, delete", cancel: "Cancel", save: "Save",
       saved: (t) => "Saved " + t,
-      byAgent: "Added by an agent", byUser: "Added by you", opened: "opened", started: "started", closedOn: "closed",
+      follow: "Followed by", addedBy: "Added by", dOpened: "Opened", dStarted: "Started", dClosed: "Closed", dStatus: "Status changed",
+      refMissing: (id) => id + " is not on this project's board.", dash: "—", props: "Properties", back: "Back",
       pName: "Project name", pGoal: "Current goal", pGoalHint: "One sentence. Every agent reads it at the start of a session.",
       pCounters: "Next free numbers", pCountersHint: "One “name = number” per line. Parallel sessions reserve their numbers here.",
       pErr: "Each line must read “name = number”.",
@@ -582,7 +611,8 @@ dialog::backdrop { background: var(--scrim); }
     laterOn: false, closedOn: false, closedLimit: CLOSED_PAGE, closedFull: false,
     turn: new Map(),             // key -> Map(id -> card): ball = user in every project
     q: "", ms: "", sel: null, flash: null,
-    briefUnsub: null, briefText: "", briefDirty: false,
+    briefUnsub: null, briefText: "", briefDirty: false, briefLoaded: false, briefEditing: false,
+    selDoc: undefined, cardUnsub: null, replySent: "", history: [],
   };
   const subs = { turn: new Map(), project: [], later: null, closed: null, msDone: new Map() };
 
@@ -702,19 +732,16 @@ dialog::backdrop { background: var(--scrim); }
     for (const n of document.querySelectorAll("[data-t]")) n.textContent = t(n.dataset.t);
     for (const n of document.querySelectorAll("[data-tp]")) n.placeholder = t(n.dataset.tp);
     $("lang").textContent = t("otherLang");
-    const kind = $("f-kind");
-    kind.replaceChildren(new Option("—", ""), ...KINDS.map((k) => new Option(t("kinds")[k], k)));
-    const mkSeg = (box, keys, labels, data) => {
-      box.replaceChildren(...keys.map((k) => {
-        const b = el("button", "seg", labels[k]);
-        b.type = "button";
-        b.setAttribute("role", "radio");
-        b.dataset[data] = k;
-        return b;
-      }));
+    const fillSelect = (id, keys, labels, blank) => {
+      const box = $(id);
+      const v = box.value;
+      box.replaceChildren(...(blank ? [new Option("—", "")] : []), ...keys.map((k) => new Option(labels[k], k)));
+      box.value = v;
     };
-    mkSeg($("f-status"), STATUSES, t("st"), "status");
-    mkSeg($("f-ball"), BALLS, t("balls"), "ball");
+    fillSelect("f-kind", KINDS, t("kinds"), true);
+    fillSelect("f-status", STATUSES, t("st"), false);
+    fillSelect("f-ball", BALLS, t("balls"), false);
+    for (const n of document.querySelectorAll("[data-ta]")) n.setAttribute("aria-label", t(n.dataset.ta));
   }
 
   function renderProjects() {
@@ -930,34 +957,224 @@ dialog::backdrop { background: var(--scrim); }
     fillDetail(false);
   }
 
-  /* ---------- the card dialog ---------- */
+  /* ---------- a card's own screen ---------- */
   function setVal(id, v, force) {
     const f = $(id);
     if ((force || document.activeElement !== f) && f.value !== v) f.value = v;
   }
-  function fillDetail(force) {
+  // The card on screen: its own live document once the screen's listener has answered.
+  function selCard() {
     const s = state.sel;
-    if (!s) return;
-    const c = cardOf(s.key, s.id);
-    if (!c) { if (state.loaded) deselect(); return; }
+    if (!s) return null;
+    return state.selDoc !== undefined ? state.selDoc : cardOf(s.key, s.id);
+  }
+  function refEl(key, id) {
+    const b = el("button", "ref", id);
+    b.type = "button";
+    b.dataset.refKey = key;
+    b.dataset.ref = id;
+    const c = cardOf(key, id);
+    if (c && c.title) b.title = String(c.title);
+    return b;
+  }
+
+  // A brief is plain text written by people and agents. Headings (`## Goal`, `**Goal:**`, `GOAL`),
+  // lists, quotes, fenced code, `code`, **bold** and card ids are drawn; nothing else is read as markup.
+  const CAPS_LINE = /^[A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ '’()&/-]{1,58}:?$/;
+  function inlineText(parent, text, key) {
+    const re = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|\b(t\d{3,4})\b/g;
+    let last = 0;
+    let m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) parent.append(text.slice(last, m.index));
+      if (m[1]) parent.append(el("code", null, m[1].slice(1, -1)));
+      else if (m[2]) {
+        const b = el("strong");
+        inlineText(b, m[2].slice(2, -2), key);
+        parent.append(b);
+      } else parent.append(refEl(key, m[3]));
+      last = re.lastIndex;
+    }
+    if (last < text.length) parent.append(text.slice(last));
+  }
+  function renderBrief(text, key) {
+    const frag = document.createDocumentFragment();
+    let block = null;
+    let kind = "";
+    let pre = null;
+    let preLines = [];
+    const open = (tag, k) => {
+      block = el(tag);
+      kind = k;
+      frag.append(block);
+    };
+    for (const raw of String(text).replace(/\r\n?/g, "\n").split("\n")) {
+      if (pre) {
+        if (/^\s*```/.test(raw)) { pre = null; continue; }
+        preLines.push(raw);
+        pre.textContent = preLines.join("\n");
+        continue;
+      }
+      const line = raw.replace(/\s+$/, "");
+      if (/^\s*```/.test(line)) {
+        pre = el("pre");
+        preLines = [];
+        frag.append(pre);
+        block = null;
+        continue;
+      }
+      if (!line.trim()) { block = null; continue; }
+      let m;
+      // `**Goal:** text` on one line reads as a heading and its paragraph.
+      if ((m = /^\s*\*\*([^*]+?):\*\*\s+(\S.*)$/.exec(line)) || (m = /^\s*\*\*([^*]+?)\*\*:\s+(\S.*)$/.exec(line))) {
+        const h = el("h4", "p-h");
+        inlineText(h, m[1], key);
+        frag.append(h);
+        open("p", "p");
+        inlineText(block, m[2], key);
+        continue;
+      }
+      const heading = (m = /^\s{0,3}#{1,6}\s+(.+)$/.exec(line)) ? m[1]
+        : (m = /^\s*\*\*([^*]+?)\*\*\s*:?\s*$/.exec(line)) ? m[1]
+        : CAPS_LINE.test(line.trim()) && /[A-ZÇĞİÖŞÜ]{3}/.test(line) ? line.trim() : null;
+      if (heading) {
+        const h = el("h4", "p-h");
+        inlineText(h, heading.replace(/\s*:$/, ""), key);
+        frag.append(h);
+        block = null;
+        continue;
+      }
+      if ((m = /^(\s*)(?:[-*•]|(\d+)[.)])\s+(.*)$/.exec(line))) {
+        const want = m[2] ? "ol" : "ul";
+        if (!block || kind !== want) {
+          open(want, want);
+          if (m[2] && m[2] !== "1") block.start = Number(m[2]);
+        }
+        const li = el("li", m[1].length >= 2 ? "sub" : null);
+        inlineText(li, m[3], key);
+        block.append(li);
+        continue;
+      }
+      if ((m = /^\s*>\s?(.*)$/.exec(line))) {
+        if (!block || kind !== "quote") open("blockquote", "quote");
+        else block.append(el("br"));
+        inlineText(block, m[1], key);
+        continue;
+      }
+      if (block && (kind === "ul" || kind === "ol") && /^\s{2,}\S/.test(line)) {
+        const li = block.lastElementChild;
+        li.append(" ");
+        inlineText(li, line.trim(), key);
+        continue;
+      }
+      if (!block || kind !== "p") open("p", "p");
+      else block.append(el("br"));
+      inlineText(block, line.trim(), key);
+    }
+    return frag;
+  }
+
+  // One line under the title that says where the card stands and whose move it is.
+  function renderStateLine(s, c) {
     const st = statusOf(c);
     const ball = ballOf(c);
     const here = s.key === state.key;
-    $("detail-id").textContent = (s.key !== state.key || state.projects.size > 1 ? projName(s.key) + " · " : "") + s.id;
+    const parts = [el("span", "pill " + STATUS_CLS[st], t("st")[st])];
+    const at = parseDay(c.at);
+    if (isClosed(c)) {
+      const d = parseDay(c.closed) || at;
+      if (d) parts.push(el("span", "when", t("closedAt", fmt(d, true))));
+    } else {
+      if (ball === "user") {
+        parts.push(el("span", "pill st-warn", t("yourMove")));
+        if (at) {
+          const n = -daysFrom(at);
+          parts.push(el("span", "when" + (n >= 3 ? " hot" : ""), t("waited", n)));
+        }
+      } else if (ball === "external") parts.push(el("span", "chip soft", t("waitingOn", c.waiting || "?")));
+      else if (st === "inbox") parts.push(el("span", "when", t("notShaped")));
+      else if (st === "later") parts.push(el("span", "when", t("keptLater")));
+      else if (st === "todo" && here) {
+        const pos = listOf("queue", true).findIndex((x) => x[0] === s.id);
+        if (pos >= 0) parts.push(el("span", "when", t("queuePos", pos + 1)));
+      }
+      if (st === "doing") {
+        if (c.owner) parts.push(el("span", "chip", String(c.owner)));
+        const started = parseDay(c.started) || at;
+        if (started) parts.push(el("span", "when", t("running", -daysFrom(started))));
+      }
+      const waits = here ? waitingOn(c) : asList(c.deps);
+      if (waits.length) {
+        const [before, after] = t("afterParts");
+        const span = el("span", "deps-wait");
+        if (before) span.append(el("span", null, before));
+        for (const d of waits) span.append(refEl(s.key, d));
+        if (after) span.append(el("span", null, after));
+        parts.push(span);
+      }
+    }
+    for (const pr of asList(c.prs)) parts.push(el("span", "chip", "#" + pr.replace(/^#/, "")));
+    if (c.wave) parts.push(el("span", "chip soft", t("wave") + " " + c.wave));
+    $("state-line").replaceChildren(...parts);
+  }
+
+  function headId(key, id) {
+    return (key !== state.key || state.projects.size > 1 ? projName(key) + " · " : "") + id;
+  }
+  // A card opened from a link inside another card, before its document arrives.
+  function showPending(key, id) {
+    $("detail-id").textContent = headId(key, id);
+    setVal("f-title", "", true);
+    $("f-title").disabled = true;
+    $("state-line").replaceChildren(el("span", "when", t("loading")));
+    $("detail-cols").hidden = true;
+  }
+
+  function fillDetail(force) {
+    const s = state.sel;
+    if (!s) return;
+    const c = selCard();
+    if (!c) {
+      if (state.selDoc === null) deselect();
+      return;
+    }
+    const st = statusOf(c);
+    const ball = ballOf(c);
+    const here = s.key === state.key;
+    $("detail-cols").hidden = false;
+    $("detail-id").textContent = headId(s.key, s.id);
+    const back = state.history[state.history.length - 1];
+    $("detail-back").hidden = !back;
+    $("detail-back").textContent = back ? "← " + back.id : "";
+    if (back) $("detail-back").setAttribute("aria-label", t("back") + " " + back.id);
+    $("f-title").disabled = !state.canWrite;
     setVal("f-title", String(c.title || ""), force);
-    grow($("f-title"), 240);
-    for (const b of $("f-status").querySelectorAll("[data-status]")) b.setAttribute("aria-checked", String(b.dataset.status === st));
-    for (const b of $("f-ball").querySelectorAll("[data-ball]")) b.setAttribute("aria-checked", String(b.dataset.ball === ball));
-    $("waiting-field").hidden = ball !== "external";
-    setVal("f-waiting", String(c.waiting || ""), force);
-    $("agent-note").hidden = !c.note;
-    $("agent-note-text").textContent = String(c.note || "");
-    $("reply-field").hidden = !(ball === "user" || c.reply || document.activeElement === $("f-reply"));
+    grow($("f-title"), 400);
+    renderStateLine(s, c);
+
+    const asks = ball === "user" && !isClosed(c);
+    $("ask").hidden = !asks;
+    $("ask-note").textContent = String(c.note || t("askFallback"));
     setVal("f-reply", String(c.reply || ""), force);
+    $("reply-save").textContent = c.reply ? t("replyUpdate") : t("replySave");
+    $("agent-note").hidden = asks || !c.note;
+    $("agent-note-text").textContent = String(c.note || "");
+
+    setVal("f-status", st, force);
+    setVal("f-ball", ball, force);
+    $("row-waiting").hidden = ball !== "external";
+    setVal("f-waiting", String(c.waiting || ""), force);
+    const queue = here && sectionOf(c) === "queue" ? listOf("queue", true).map((x) => x[0]) : [];
+    const pos = queue.indexOf(s.id);
+    $("row-place").hidden = pos < 0;
+    $("place-num").textContent = pos >= 0 ? t("queuePos", pos + 1) : "";
+    $("mv-top").disabled = pos <= 0;
+    $("mv-up").disabled = pos <= 0;
+    $("mv-down").disabled = pos < 0 || pos === queue.length - 1;
 
     const msSel = $("f-milestone");
     const opts = [["", t("none")], ...[...state.milestones.entries()]
-      .filter(([id, m]) => m.state !== "closed" || id === c.milestone)
+      .filter(([id, m]) => here && (m.state !== "closed" || id === c.milestone))
       .sort((a, b) => ord(a[1]) - ord(b[1])).map(([id, m]) => [id, String(m.title || id)])];
     if (c.milestone && !opts.some((o) => o[0] === c.milestone)) opts.push([c.milestone, c.milestone]);
     if (force || document.activeElement !== msSel) {
@@ -965,25 +1182,44 @@ dialog::backdrop { background: var(--scrim); }
       msSel.value = c.milestone || "";
     }
     msSel.disabled = !here || !state.canWrite;
+    msSel.parentElement.classList.toggle("off", msSel.disabled);
     setVal("f-area", String(c.area || ""), force);
     const areas = new Set();
     for (const m of [state.open, state.later, state.closed]) for (const x of m.values()) if (x.area) areas.add(String(x.area));
     $("area-list").replaceChildren(...[...areas].sort().map((a) => new Option(a)));
     setVal("f-kind", KINDS.includes(c.kind) ? c.kind : "", force);
-    setVal("f-owner", String(c.owner || ""), force);
-    setVal("f-prs", asList(c.prs).join(", "), force);
     setVal("f-deps", asList(c.deps).join(", "), force);
-    setVal("f-reqs", asList(c.reqs).join(", "), force);
-    setVal("f-note", String(c.note || ""), force);
-    $("move-row").hidden = !here || sectionOf(c) !== "queue";
 
-    const waits = isClosed(c) || !here ? [] : waitingOn(c);
-    const parts = [c.owner, asList(c.prs).map((p) => "#" + p).join(" "), waits.length ? t("after", waits.join(", ")) : ""].filter(Boolean);
-    $("fold-sum").textContent = parts.length ? " · " + parts.join(" · ") : "";
-    const who = c.src === "agent" ? t("byAgent") : c.src === "user" ? t("byUser") : "";
-    const days = [["created", "opened"], ["started", "started"], ["closed", "closedOn"]]
-      .map(([k, l]) => (parseDay(c[k]) ? t(l) + " " + fmt(parseDay(c[k])) : "")).filter(Boolean);
-    $("detail-meta").textContent = [who, ...days].filter(Boolean).join(" · ");
+    // What an agent fills in shows only when it is there.
+    for (const [row, field, val] of [
+      ["row-owner", "f-owner", String(c.owner || "")],
+      ["row-prs", "f-prs", asList(c.prs).join(", ")],
+      ["row-reqs", "f-reqs", asList(c.reqs).join(", ")],
+    ]) {
+      $(row).hidden = !val && document.activeElement !== $(field);
+      setVal(field, val, force);
+    }
+    const w = here && c.wave ? state.waves.get(c.wave) : null;
+    $("row-wave").hidden = !c.wave;
+    $("wave-text").textContent = c.wave ? [c.wave, w && w.title, w && w.state && (t("waveState")[w.state] || w.state)].filter(Boolean).join(" · ") : "";
+    const follow = asList(c.follow);
+    $("row-follow").hidden = !follow.length;
+    $("follow-refs").replaceChildren(...follow.map((id) => refEl(s.key, id)));
+    $("props-work").hidden = ["row-owner", "row-prs", "row-reqs", "row-wave", "row-follow"].every((r) => $(r).hidden);
+
+    const rows = [];
+    const addRow = (label, value) => {
+      const d = el("div", "prop");
+      d.append(el("dt", null, label), el("dd", "text", value));
+      rows.push(d);
+    };
+    for (const [k, label] of [["created", "dOpened"], ["started", "dStarted"], ["closed", "dClosed"], ["at", "dStatus"]]) {
+      const d = parseDay(c[k]);
+      if (d) addRow(t(label), fmt(d, true));
+    }
+    if (c.src === "user" || c.src === "agent") addRow(t("addedBy"), t("balls")[c.src]);
+    $("props-dates").replaceChildren(...rows);
+    $("props-dates").hidden = !rows.length;
   }
 
   /* ---------- writes: one at a time per document ---------- */
@@ -1081,7 +1317,7 @@ dialog::backdrop { background: var(--scrim); }
   function nudge(how) {
     const s = state.sel;
     if (!s || s.key !== state.key) return;
-    const seen = listOf("queue").map((x) => x[0]);
+    const seen = listOf("queue", true).map((x) => x[0]);
     const i = seen.indexOf(s.id);
     if (i < 0) return;
     const others = seen.filter((x) => x !== s.id);
@@ -1092,25 +1328,45 @@ dialog::backdrop { background: var(--scrim); }
 
   let briefTimer = null;
   function stopBriefTimer() { if (briefTimer) { clearTimeout(briefTimer); briefTimer = null; } }
+  function renderBriefView() {
+    const s = state.sel;
+    const view = $("brief-view");
+    const editing = !!s && state.briefEditing;
+    view.hidden = editing;
+    $("brief-editor").hidden = !editing;
+    $("brief-edit").textContent = editing ? t("briefDone") : state.briefText.trim() ? t("edit") : t("briefWrite");
+    if (!s) { view.replaceChildren(); return; }
+    if (editing) return;
+    if (!state.briefLoaded) view.replaceChildren(el("p", "muted", t("loading")));
+    else if (state.briefText.trim()) view.replaceChildren(renderBrief(state.briefText, s.key));
+    else view.replaceChildren(el("p", "muted", t("noBrief")));
+  }
   function watchBrief(sel) {
     if (state.briefUnsub) { state.briefUnsub(); state.briefUnsub = null; }
     const ta = $("f-brief");
     ta.value = "";
     state.briefText = "";
     state.briefDirty = false;
+    state.briefLoaded = false;
+    state.briefEditing = false;
+    renderBriefView();
     if (!sel || !state.db) return;
-    let first = true;
     state.briefUnsub = state.db.doc(briefPath(sel.key, sel.id)).onSnapshot((snap) => {
       if (state.sel !== sel) return;
       const d = snap.exists ? snap.data() : null;
       state.briefText = d && typeof d.text === "string" ? d.text : "";
+      state.briefLoaded = true;
       // Never replace text the viewer is in the middle of typing.
-      if (!state.briefDirty && (first || document.activeElement !== ta)) ta.value = state.briefText;
-      first = false;
-    }, () => {});
+      if (!state.briefDirty && document.activeElement !== ta) ta.value = state.briefText;
+      renderBriefView();
+    }, () => {
+      if (state.sel !== sel) return;
+      state.briefLoaded = true;
+      renderBriefView();
+    });
   }
   function saveBrief(sel, raw) {
-    const c = cardOf(sel.key, sel.id);
+    const c = state.sel === sel ? selCard() : cardOf(sel.key, sel.id);
     if (!c || !state.db || !state.canWrite) return;
     const text = raw.replace(/\s+$/, "");
     state.briefDirty = false;
@@ -1125,36 +1381,95 @@ dialog::backdrop { background: var(--scrim); }
       if (c.brief) patchTask(sel.key, sel.id, { brief: false });
     }
   }
+  // The answer is saved by its button, by Ctrl+Enter, or when the box loses focus; once each.
+  function commitReply() {
+    const s = state.sel;
+    const c = selCard();
+    if (!s || !c || !state.db || !state.canWrite) return;
+    const v = $("f-reply").value.trim();
+    const sent = s.key + "/" + s.id + "\n" + v;
+    if (v === String(c.reply || "") || state.replySent === sent) return;
+    state.replySent = sent;
+    patchTask(s.key, s.id, { reply: v || DEL });
+  }
 
   function resetDel() { $("del").hidden = false; $("del-confirm").hidden = true; }
+  // The screen keeps its own listener on the card, so it stays open and current whichever
+  // list the card leaves: a changed status, a changed move, a card from another project.
+  function watchCard(sel) {
+    if (state.cardUnsub) { state.cardUnsub(); state.cardUnsub = null; }
+    state.selDoc = undefined;
+    if (!sel || !state.db) return;
+    state.cardUnsub = state.db.doc(taskPath(sel.key, sel.id)).onSnapshot((snap) => {
+      if (state.sel !== sel) return;
+      if (!snap.exists) {
+        if (snap.metadata && snap.metadata.fromCache) return;
+        const known = state.selDoc || cardOf(sel.key, sel.id);
+        state.selDoc = null;
+        const prev = known ? null : state.history.pop();
+        if (prev) {
+          select(prev.key, prev.id);
+          $("save-state").textContent = t("refMissing", sel.id);
+        } else {
+          deselect();
+          if (!known) say("ref", t("refMissing", sel.id));
+        }
+        return;
+      }
+      state.selDoc = snap.data();
+      fillDetail(false);
+    }, () => {});
+  }
   function select(key, id, focusId) {
-    if (!cardOf(key, id)) return;
+    // Moving from one card to another: what was being typed goes to the first one.
+    const active = document.activeElement;
+    if (state.sel && active && dlg.contains(active) && active !== dlg) active.blur();
     state.sel = { key, id };
+    state.replySent = "";
     resetDel();
     stopBriefTimer();
     $("deps-hint").hidden = true;
     $("save-state").textContent = "";
+    if (noticeKind === "ref") say("ref", "");
+    watchCard(state.sel);
     watchBrief(state.sel);
     if (!dlg.open) dlg.showModal();
-    fillDetail(true);
-    (focusId ? $(focusId) : dlg).focus();
+    dlg.scrollTop = 0;
+    if (selCard()) fillDetail(true);
+    else showPending(key, id);
+    (focusId ? $(focusId) : dlg).focus({ preventScroll: true });
   }
   function deselect() {
     // A field still being typed in commits on blur, while the card is still selected.
     const active = document.activeElement;
     if (active && dlg.contains(active) && active !== dlg) active.blur();
     state.sel = null;
+    state.history = [];
     stopBriefTimer();
+    watchCard(null);
     watchBrief(null);
     if (dlg.open) dlg.close();
   }
+  // A card id on the screen opens that card; the back button returns to the one before.
+  function openRef(key, id) {
+    const s = state.sel;
+    if (!s || (s.key === key && s.id === id)) return;
+    state.history.push(s);
+    select(key, id);
+  }
+  function goBack() {
+    const prev = state.history.pop();
+    if (prev) select(prev.key, prev.id);
+  }
 
   /* ---------- events: page ---------- */
+  const COARSE = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
   function openFrom(e) {
     const r = e.target.closest ? e.target.closest(".card") : null;
     if (!r) return;
     const c = cardOf(r.dataset.key, r.dataset.id);
-    const asks = c && ballOf(c) === "user" && !c.reply && state.canWrite;
+    const asks = c && ballOf(c) === "user" && !c.reply && state.canWrite && !COARSE;
+    state.history = [];
     select(r.dataset.key, r.dataset.id, asks ? "f-reply" : null);
   }
   wrap.addEventListener("click", (e) => {
@@ -1179,7 +1494,7 @@ dialog::backdrop { background: var(--scrim); }
     pref("lang", lang);
     applyStatic();
     render();
-    if (state.sel) fillDetail(true);
+    if (state.sel) { fillDetail(true); renderBriefView(); }
   });
   $("add-title").addEventListener("input", () => grow($("add-title"), 280));
   $("add-title").addEventListener("keydown", (e) => {
@@ -1259,10 +1574,15 @@ dialog::backdrop { background: var(--scrim); }
     placeInQueue(d.id, d.prevId, d.nextId);
   });
 
-  /* ---------- events: card dialog ---------- */
+  /* ---------- events: a card's own screen ---------- */
   dlg.addEventListener("cancel", (e) => { e.preventDefault(); deselect(); });
-  dlg.addEventListener("click", (e) => { if (e.target === dlg) deselect(); });
+  dlg.addEventListener("click", (e) => {
+    if (e.target === dlg) { deselect(); return; }
+    const r = e.target.closest(".ref");
+    if (r) openRef(r.dataset.refKey, r.dataset.ref);
+  });
   $("detail-close").addEventListener("click", deselect);
+  $("detail-back").addEventListener("click", goBack);
   $("detail-form").addEventListener("submit", (e) => e.preventDefault());
 
   const RESTORE = {};
@@ -1271,8 +1591,8 @@ dialog::backdrop { background: var(--scrim); }
     const f = $(fieldId);
     f.addEventListener("change", () => {
       const s = state.sel;
-      const c = s && cardOf(s.key, s.id);
-      if (!c || !state.db || !state.canWrite) return;
+      const c = selCard();
+      if (!s || !c || !state.db || !state.canWrite) return;
       const patch = make(f.value, c, s);
       if (patch === RESTORE) { fillDetail(true); return; }
       if (!patch) return;
@@ -1292,12 +1612,10 @@ dialog::backdrop { background: var(--scrim); }
   }
   onField("f-title", (v) => (v.trim() ? { title: v.replace(/\s+/g, " ").trim() } : RESTORE));
   onField("f-waiting", (v) => ({ waiting: v.trim() }));
-  onField("f-reply", (v) => ({ reply: v.trim() }));
   onField("f-milestone", (v) => ({ milestone: v }));
   onField("f-area", (v) => ({ area: v.trim() }));
   onField("f-kind", (v) => ({ kind: v }));
   onField("f-owner", (v) => ({ owner: v.trim() }));
-  onField("f-note", (v) => ({ note: v.trim() }));
   onField("f-prs", (v) => ({ prs: splitList(v.replace(/#/g, "")).map((x) => (/^\d+$/.test(x) ? Number(x) : x)) }));
   onField("f-reqs", (v) => ({ reqs: v.split(/[,;]+/).map((x) => x.trim()).filter(Boolean) }));
   onField("f-deps", (v, c, s) => {
@@ -1307,24 +1625,49 @@ dialog::backdrop { background: var(--scrim); }
     hint.hidden = true;
     return { deps: ids };
   });
-  $("f-title").addEventListener("input", () => grow($("f-title"), 240));
-  $("f-status").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-status]");
+  $("f-title").addEventListener("input", () => grow($("f-title"), 400));
+  $("f-status").addEventListener("change", () => {
     const s = state.sel;
-    const c = s && cardOf(s.key, s.id);
-    if (!b || !c || !state.db || !state.canWrite || b.dataset.status === statusOf(c)) return;
-    patchTask(s.key, s.id, statusPatch(c, b.dataset.status));
+    const c = selCard();
+    const v = $("f-status").value;
+    if (!s || !c || !state.db || !state.canWrite || v === statusOf(c)) return;
+    patchTask(s.key, s.id, statusPatch(c, v));
   });
-  $("f-ball").addEventListener("click", (e) => {
-    const b = e.target.closest("[data-ball]");
+  $("f-ball").addEventListener("change", () => {
     const s = state.sel;
-    const c = s && cardOf(s.key, s.id);
-    if (!b || !c || !state.db || !state.canWrite || b.dataset.ball === c.ball) return;
-    patchTask(s.key, s.id, { ball: b.dataset.ball });
+    const c = selCard();
+    const v = $("f-ball").value;
+    if (!s || !c || !state.db || !state.canWrite || v === ballOf(c)) return;
+    patchTask(s.key, s.id, { ball: v });
+  });
+  $("f-reply").addEventListener("change", commitReply);
+  $("f-reply").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commitReply(); }
+  });
+  $("reply-save").addEventListener("click", commitReply);
+
+  const briefMax = () => Math.max(240, Math.round(window.innerHeight * 0.7));
+  $("brief-edit").addEventListener("click", () => {
+    const s = state.sel;
+    if (!s || !state.canWrite) return;
+    const ta = $("f-brief");
+    if (state.briefEditing) {
+      stopBriefTimer();
+      saveBrief(s, ta.value);
+      state.briefEditing = false;
+      renderBriefView();
+      return;
+    }
+    state.briefEditing = true;
+    ta.value = state.briefText;
+    renderBriefView();
+    grow(ta, briefMax());
+    ta.focus();
   });
   $("f-brief").addEventListener("input", () => {
     const s = state.sel;
     state.briefDirty = true;
+    grow($("f-brief"), briefMax());
     stopBriefTimer();
     briefTimer = setTimeout(() => { briefTimer = null; if (state.sel === s) saveBrief(s, $("f-brief").value); }, 1500);
   });
@@ -1338,9 +1681,9 @@ dialog::backdrop { background: var(--scrim); }
     const s = state.sel;
     if (!s || !state.db) return;
     deselect();
-    state.open.delete(s.id);
-    state.later.delete(s.id);
-    state.closed.delete(s.id);
+    if (s.key === state.key) for (const m of [state.open, state.later, state.closed]) m.delete(s.id);
+    const tm = state.turn.get(s.key);
+    if (tm) tm.delete(s.id);
     write(taskPath(s.key, s.id), () => state.db.doc(taskPath(s.key, s.id)).delete());
     write(briefPath(s.key, s.id), () => state.db.doc(briefPath(s.key, s.id)).delete());
     resetDel();
@@ -1524,7 +1867,7 @@ dialog::backdrop { background: var(--scrim); }
   function readOnly() {
     state.canWrite = false;
     wrap.classList.add("ro");
-    for (const f of document.querySelectorAll("#detail-form input, #detail-form textarea, #detail-form select, #f-status button, #f-ball button")) f.disabled = true;
+    for (const f of document.querySelectorAll("#detail-form input, #detail-form textarea, #detail-form select")) f.disabled = true;
     renderLists();
   }
 
