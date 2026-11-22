@@ -4,5 +4,6 @@
   "author": {
     "name": "Furkan ODUNKIRAN"
   },
+  "license": "Apache-2.0",
   "keywords": ["git", "hooks", "branch-protection", "guard"]
 }

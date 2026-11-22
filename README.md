@@ -65,8 +65,11 @@ Not released and not installed anywhere yet.
 - `pano`'s page (`assets/board.html`) still draws the first board layout; the
   skill and `reference/schema.md` describe the new one. The page and the move
   of the existing boards are still to do.
-- No license has been chosen.
 - One trigger case per skill is written under `evals/`; none has been run,
   because a run makes real model calls.
 - `claude plugin validate` passes with its "no version" warning, which is
   intended while updates follow commits.
+
+## License
+
+Apache License 2.0; see [LICENSE](LICENSE).
