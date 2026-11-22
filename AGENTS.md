@@ -21,6 +21,6 @@ claude --plugin-dir plugins/<name> plugin details <name>    # what a plugin adds
 
 ## Working here
 
-- Commit locally in small Conventional Commits, as the maintainer (`git var GIT_AUTHOR_IDENT`), with no tool attribution. There is no remote yet; creating one, pushing and publishing are the maintainer's.
+- Commit locally in small Conventional Commits, as the maintainer (`git var GIT_AUTHOR_IDENT`, a GitHub noreply address), with no tool attribution. The repository is public at github.com/fodunkiran/tezgah; pushing to it is the maintainer's.
 - A plugin is tried in a sandbox project, enabled for that project only. Installing one for the whole account, or changing another project to use it, waits for the maintainer's word.
 - The state of work is on the maintainer's work board, not in this repository. `README.md`'s "Status" says what is unfinished.
