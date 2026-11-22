@@ -5,7 +5,7 @@ A worker starts cold: the brief is all it knows about the task. It reads the rep
 ## What a brief holds
 
 - **Goal.** The outcome in one or two sentences, and the card it belongs to.
-- **Done when.** A short list a reviewer can check: a behaviour, a test that passes, a page that shows something. Write it before the work starts; the review reads against it.
+- **Done when.** A short list a reviewer can check: a behaviour, a test that passes, a page that shows something. Write it before the work starts; the review reads against it. For a refactor it says the output stays identical byte for byte; a verbatim move is checked by sorting the lines removed and the lines added and comparing them.
 - **Area.** The files and modules this piece owns. Name the files other pieces of the wave also touch, and ask for line-local edits there.
 - **Base.** The branch to start from and to open the pull request against: the project's integration branch, from `.claude/tezgah.toml`. Say it even when it seems obvious; a new worktree can start from another branch.
 - **Decided already.** What the pieces share and this one must not reopen: a decision record, a signature, a reserved number.
