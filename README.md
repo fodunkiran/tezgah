@@ -61,17 +61,19 @@ before installing; it is three short Python scripts and one JSON file.
 
 ## Status
 
-Not released and not installed anywhere yet.
+A first public version.
 
-- `bekci` has only been run by its tests, which feed each hook the JSON
-  Claude Code sends. It has not been tried inside a live session.
-- An independent review found forms `bekci` let through; they are fixed and
-  its tests pass with 305 hook runs. The fixed version has not had a second
-  review yet, and three harmless refusals remain, listed under "Known gaps"
-  in its README.
-- `pano`'s page (`assets/board.html`) still draws the first board layout; the
-  skill and `reference/schema.md` describe the new one. The page and the move
-  of the existing boards are still to do.
+- `bekci` is tried by its tests, which feed each hook the JSON Claude Code
+  sends (41 groups, 487 hook runs). Two independent reviews tried to break it;
+  what they found is fixed, each with a test, and the harmless refusals that
+  remain are under "Known gaps" in its README. It has been run on Windows
+  only, an earlier version also in a live session. On macOS and Linux it
+  starts `python3` where there is no `python`, but nobody has tried it there.
+- `pano`'s page draws the layout of `reference/schema.md`. Moving a board from
+  the first layout is described in `reference/open-a-board.md` and has not
+  been done on a real board yet.
+- `orkestra` writes down how its author runs parallel sessions; it has not
+  been followed end to end from the plugin yet.
 - One trigger case per skill is written under `evals/`; none has been run,
   because a run makes real model calls.
 - `claude plugin validate` passes with its "no version" warning, which is
