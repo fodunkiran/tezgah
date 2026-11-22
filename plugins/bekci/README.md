@@ -45,8 +45,11 @@ rust = true                   # run rustfmt on an edited .rs file
   hook does nothing.
 - The file holds names and patterns, never commands. A cloned repository
   cannot make bekci run anything through it.
-- The file is read from the git root of the folder the tool call runs in, so
-  a worktree is judged by its own copy.
+- The file is read from the git root of the folder a command acts in, so a
+  worktree is judged by its own copy. A work tree without one is judged by
+  another copy in the same repository: the main checkout's, or else the one
+  in the folder the session runs in. A worktree cut from a branch older than
+  the file, or a main checkout left on such a branch, is still guarded.
 - A file that does not parse, or holds a value of the wrong type, refuses
   pushes, pull request commands and `gh api` calls that change something, and
   says why. Everything else goes through, edits included: with a broken file

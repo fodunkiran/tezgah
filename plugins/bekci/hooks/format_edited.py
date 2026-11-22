@@ -52,8 +52,9 @@ def main():
     path = Path(raw)
     if not raw or path.suffix != ".rs" or not path.is_file():
         return
+    cwd = payload.get("cwd")
     try:
-        config = project_config.load(path.resolve().parent)
+        config = project_config.load(path.resolve().parent, session=cwd if isinstance(cwd, str) and cwd else None)
     except (OSError, subprocess.SubprocessError):
         return
     if not isinstance(config, project_config.Config) or not config.format_rust:

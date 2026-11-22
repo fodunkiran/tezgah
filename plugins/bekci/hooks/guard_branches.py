@@ -114,6 +114,9 @@ def deny(reason):
 
 
 _configs = {}
+# The folder the session runs in (the payload's `cwd`). Its copy of the file also governs a
+# work tree of the same repository that has none, such as a main checkout on an old branch.
+_session = {"folder": None}
 
 
 def settings(location, what):
@@ -124,7 +127,7 @@ def settings(location, what):
     key = tuple(location)
     if key not in _configs:
         root = config_root(location)
-        _configs[key] = project_config.load_root(root) if root else None
+        _configs[key] = project_config.load_root(root, _session["folder"]) if root else None
     config = _configs[key]
     if isinstance(config, project_config.Broken):
         deny(
@@ -615,6 +618,7 @@ def main():
     shell = "powershell" if payload.get("tool_name") == "PowerShell" else "bash"
     cwd = payload.get("cwd")
     cwd = native_path(cwd if isinstance(cwd, str) and cwd else os.getcwd())
+    _session["folder"] = cwd
     try:
         check_line(line, cwd, shell)
     except Exception as error:  # the guard must not drop silently

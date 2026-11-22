@@ -36,15 +36,18 @@ def git(root, *args):
     return result.stdout if result.returncode == 0 else None
 
 
-def landed_file(path):
-    """(ref, name in git) when the path is an immutable file that has landed; otherwise `None`."""
+def landed_file(path, session=None):
+    """(ref, name in git) when the path is an immutable file that has landed; otherwise `None`.
+
+    `session` is the folder the session runs in; see `project_config.load_root`.
+    """
     # The edit tools resolve a path lexically: `sub/..` collapses even if `sub` does not
     # exist, while a POSIX kernel stops at the missing `sub`. Simplify first, as the tool does.
     path = Path(os.path.abspath(path))
     if not path.is_file():
         return None
     resolved = path.resolve()
-    config = project_config.load(resolved.parent)
+    config = project_config.load(resolved.parent, session=session)
     if not isinstance(config, project_config.Config) or not config.immutable_paths:
         return None
     root = config.root.resolve()
@@ -74,8 +77,9 @@ def main():
     raw = payload.get("tool_input", {}).get("file_path", "")
     if not raw:
         return
+    cwd = payload.get("cwd")
     try:
-        landed = landed_file(Path(raw))
+        landed = landed_file(Path(raw), session=cwd if isinstance(cwd, str) and cwd else None)
     except (OSError, ValueError, subprocess.SubprocessError):
         landed = None
     if landed is None:

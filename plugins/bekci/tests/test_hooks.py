@@ -375,16 +375,61 @@ def test_cd_to_other_checkout(work):
     ok("the folder a push runs in supplies the configuration and the branch")
 
 
-def test_worktree_uses_its_own_file(work):
+def test_worktree_without_its_own_file(work):
     checkout = make_repo(work, "wt-main", "feature/main-checkout")
     tree = work / "wt-linked"
     git(checkout, "worktree", "add", "-q", "-b", "development", str(tree))
-    env = dict(ENV, CLAUDE_PROJECT_DIR=str(checkout))
-    # The file is untracked in the main checkout, so the worktree has none.
-    expect("git push", "allow", tree, env=env)
+    # The file is untracked in the main checkout, so the worktree has none: the main
+    # checkout's copy governs it, as when the worktree was cut from an older branch.
+    expect("git push", "deny", tree)
+    expect("git push origin HEAD:main", "deny", tree)
+    expect("git push origin HEAD:feature/x", "allow", tree)
+    expect(f"cd '{tree.as_posix()}' && git push", "deny", checkout)
+    # A worktree's own copy wins over the main checkout's.
+    write_config(tree, OTHER_NAMES)
+    expect("git push", "allow", tree)
+    expect("git push origin HEAD:trunk", "deny", tree)
+    ok("a worktree is judged by its own .claude/tezgah.toml, or by the main checkout's when it has none")
+
+
+def test_main_checkout_without_the_file(work):
+    # The maintainer's main checkout sits on the release branch, which predates the file;
+    # the session works in a worktree whose branch has it.
+    checkout = make_repo(work, "mc-main", "main", config=None)
+    tree = work / "mc-linked"
+    git(checkout, "worktree", "add", "-q", "-b", "feature/w", str(tree))
     write_config(tree, CLASSIC)
-    expect("git push", "deny", tree, env=env)
-    ok("a worktree is judged by its own .claude/tezgah.toml, not CLAUDE_PROJECT_DIR")
+    expect(f"cd '{checkout.as_posix()}' && git push", "deny", tree)
+    expect(f"git -C '{checkout.as_posix()}' push origin HEAD", "deny", tree)
+    expect(f"Set-Location '{checkout}'; git push", "deny", tree, tool="PowerShell")
+    expect(f"cd '{checkout.as_posix()}' && git push origin HEAD:feature/y", "allow", tree)
+    # A session in another repository lends its file to no one.
+    elsewhere = make_repo(work, "mc-elsewhere", "feature/e")
+    expect(f"cd '{checkout.as_posix()}' && git push", "allow", elsewhere)
+    # Nor does CLAUDE_PROJECT_DIR, which names the session's project, not this repository.
+    lone_tree = work / "mc-unconfigured"
+    unconfigured = make_repo(work, "mc-unconfigured-main", "main", config=None)
+    git(unconfigured, "worktree", "add", "-q", "-b", "development", str(lone_tree))
+    expect("git push", "allow", lone_tree, env=dict(ENV, CLAUDE_PROJECT_DIR=str(elsewhere)))
+    ok("a work tree without the file is judged by the session's copy when both are one repository")
+
+
+def test_borrowed_file_broken_or_immutable(work):
+    checkout = make_repo(work, "bf-main", "feature/m", config='[branches\nintegration = "development"\n')
+    tree = work / "bf-linked"
+    git(checkout, "worktree", "add", "-q", "-b", "feature/t", str(tree))
+    expect("git push", "deny", tree, says=f"{checkout.as_posix()}/.claude/tezgah.toml is broken")
+    write_config(checkout, CLASSIC + '[immutable]\npaths = ["migrations/*.sql"]\n')
+    migrations = tree / "migrations"
+    migrations.mkdir()
+    (migrations / "0001.sql").write_text("SELECT 1;\n", encoding="utf-8", newline="\n")
+    git(tree, "add", "migrations")
+    git(tree, "commit", "-q", "-m", "migration")
+    assert immutable_decision(migrations / "0001.sql") == "deny"
+    (migrations / "0002.sql").write_text("SELECT 2;\n", encoding="utf-8", newline="\n")
+    assert immutable_decision(migrations / "0002.sql") == "allow"
+    ok("a borrowed file that is broken is named where it lies; its immutable paths hold in the worktree")
+
 
 
 def test_fails_closed_without_git(work):
@@ -727,7 +772,9 @@ def main():
             test_no_release,
             test_broken_config,
             test_cd_to_other_checkout,
-            test_worktree_uses_its_own_file,
+            test_worktree_without_its_own_file,
+            test_main_checkout_without_the_file,
+            test_borrowed_file_broken_or_immutable,
             test_fails_closed_without_git,
             test_line_continuations,
             test_shell_flags,
