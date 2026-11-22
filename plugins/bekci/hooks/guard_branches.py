@@ -619,6 +619,18 @@ def main():
     cwd = payload.get("cwd")
     cwd = native_path(cwd if isinstance(cwd, str) and cwd else os.getcwd())
     _session["folder"] = cwd
+    problem = project_config.too_old()
+    if problem:
+        # The file cannot be read. Where the session's repository has one, refuse what may
+        # push or open a pull request and say why; let everything else through.
+        try:
+            root = project_config.git_root(cwd)
+            guarded = root is not None and project_config.find_file(root, cwd) is not None
+        except (OSError, subprocess.SubprocessError):
+            guarded = True
+        if guarded and RISKY_WORDS.search(line):
+            deny(f"{problem}. Push and pull request commands are refused until it is upgraded.")
+        return
     try:
         check_line(line, cwd, shell)
     except Exception as error:  # the guard must not drop silently

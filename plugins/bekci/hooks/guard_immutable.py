@@ -75,7 +75,8 @@ def main():
     # Claude Code writes the payload as UTF-8; on Windows stdin defaults to the ANSI code page.
     payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
     raw = payload.get("tool_input", {}).get("file_path", "")
-    if not raw:
+    # A Python too old to read the file lets edits through, as a broken file does.
+    if not raw or project_config.too_old():
         return
     cwd = payload.get("cwd")
     try:

@@ -9,10 +9,10 @@ does. A file rustfmt cannot parse is left alone; the compiler reports that bette
 import json
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 
 import project_config
+from project_config import tomllib  # None before Python 3.11: then nothing is formatted
 
 FALLBACK_EDITION = "2024"
 RUSTFMT_TIMEOUT_SECONDS = 25
@@ -50,7 +50,7 @@ def main():
     payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
     raw = payload.get("tool_input", {}).get("file_path", "")
     path = Path(raw)
-    if not raw or path.suffix != ".rs" or not path.is_file():
+    if not raw or path.suffix != ".rs" or not path.is_file() or tomllib is None:
         return
     cwd = payload.get("cwd")
     try:

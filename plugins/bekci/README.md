@@ -62,6 +62,10 @@ guard crashes, the command it was guarding is refused rather than let
 through. To get out of that state, turn the plugin off:
 `claude plugin disable bekci@tezgah`.
 
+A Python older than 3.11 cannot read the file. There, in a repository that has
+one, bekci refuses push and pull request commands and says which Python it
+needs; every other command and edit goes through, and nothing is formatted.
+
 This needs Claude Code 2.1.295 or later. An older version ignores
 `onFailure`, so there a guard that crashes lets its command through.
 
@@ -97,8 +101,10 @@ that was just edited. Nothing else.
 
 ## Requirements
 
-Python 3.11 or later as the first `python` on `PATH`, and `git`. Claude Code
-2.1.295 or later for the guards to fail closed.
+Python 3.11 or later, as `python` on `PATH` or, where there is no `python`, as
+`python3`; and `git`. The hooks are started through a POSIX shell, which
+Claude Code uses on every platform (Git Bash on Windows). Claude Code 2.1.295
+or later for the guards to fail closed.
 
 ## Tests
 

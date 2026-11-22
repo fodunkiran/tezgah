@@ -10,6 +10,7 @@ touched. Standard library and git only; rustfmt is used when it is on PATH.
 import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -35,20 +36,28 @@ def ok(message):
     print(f"  ✓ {message}")
 
 
-def run_hook(name, payload, env=None):
+def run_hook(name, payload, env=None, without_tomllib=False):
+    command = [sys.executable, str(HOOKS / name)]
+    if without_tomllib:
+        # A Python older than 3.11, as far as the hooks can tell: `import tomllib` fails.
+        command = [sys.executable, "-c", (
+            "import runpy, sys; sys.modules['tomllib'] = None; "
+            f"sys.path.insert(0, {str(HOOKS)!r}); "
+            f"runpy.run_path({str(HOOKS / name)!r}, run_name='__main__')"
+        )]
     return subprocess.run(
-        [sys.executable, str(HOOKS / name)],
+        command,
         input=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         capture_output=True,
         env=env or ENV,
     )
 
 
-def outcome(name, payload, env=None):
+def outcome(name, payload, env=None, without_tomllib=False):
     """(decision, reason); an allow must print nothing at all."""
     global cases
     cases += 1
-    result = run_hook(name, payload, env)
+    result = run_hook(name, payload, env, without_tomllib)
     if result.returncode != 0:
         raise AssertionError(f"{name} crashed: {result.stderr.decode('utf-8', 'replace')}")
     if not result.stdout.strip():
@@ -431,6 +440,60 @@ def test_borrowed_file_broken_or_immutable(work):
     ok("a borrowed file that is broken is named where it lies; its immutable paths hold in the worktree")
 
 
+def test_python_too_old(work):
+    repo = make_repo(work, "old-python", "development", config=CLASSIC + '[immutable]\npaths = ["migrations/*.sql"]\n[format]\nrust = true\n')
+    unconfigured = make_repo(work, "old-python-none", "main", config=None)
+
+    def branches(command, cwd):
+        payload = {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": str(cwd)}
+        return outcome("guard_branches.py", payload, without_tomllib=True)
+
+    for command in ("git push origin feature/x", "git push", "gh pr create --base development --title t"):
+        actual, reason = branches(command, repo)
+        assert actual == "deny" and "needs Python 3.11 or later" in reason, f"{command!r} -> {actual} ({reason})"
+    for command in ("git status", "git commit -m wip", "cargo build"):
+        assert branches(command, repo)[0] == "allow", command
+    assert branches("git push origin main", unconfigured)[0] == "allow"
+    migrations = repo / "migrations"
+    migrations.mkdir()
+    (migrations / "0001.sql").write_text("SELECT 1;\n", encoding="utf-8", newline="\n")
+    git(repo, "add", "migrations")
+    git(repo, "commit", "-q", "-m", "migration")
+    edit = {"tool_name": "Edit", "tool_input": {"file_path": str(migrations / "0001.sql")}, "cwd": str(repo)}
+    assert outcome("guard_immutable.py", edit, without_tomllib=True)[0] == "allow"
+    source = repo / "main.rs"
+    source.write_text("fn  main( ) {}\n", encoding="utf-8", newline="\n")
+    edit = {"tool_name": "Edit", "tool_input": {"file_path": str(source)}, "cwd": str(repo)}
+    assert outcome("format_edited.py", edit, without_tomllib=True)[0] == "allow"
+    assert source.read_text(encoding="utf-8") == "fn  main( ) {}\n"
+    ok("before Python 3.11 a configured repository refuses only push and pull request commands, saying why")
+
+
+def test_hook_commands_find_python(work):
+    global cases
+    sh = shutil.which("sh")
+    if sh is None:
+        print("  - no `sh` on PATH, so the commands in hooks.json were not tried")
+        return
+    registered = json.loads((HOOKS / "hooks.json").read_text(encoding="utf-8"))["hooks"]
+    commands = [hook["command"] for groups in registered.values() for group in groups for hook in group["hooks"]]
+    for names, expected in ((("python", "python3"), "python"), (("python3",), "python3")):
+        shims = work / ("shims-" + "-".join(names))
+        shims.mkdir()
+        for name in names:
+            shim = shims / name
+            shim.write_text(f'#!/bin/sh\necho "{name} $1"\n', encoding="utf-8", newline="\n")
+            shim.chmod(0o755)
+        env = dict(ENV, PATH=str(shims), CLAUDE_PLUGIN_ROOT="/plugin")
+        for command in commands:
+            cases += 1
+            script = re.search(r"hooks/(\w+\.py)", command).group(1)
+            result = subprocess.run([sh, "-c", command], capture_output=True, text=True, env=env, timeout=30)
+            assert result.stdout.strip() == f"{expected} /plugin/hooks/{script}", (
+                f"{command!r} with only {names} on PATH -> {result.stdout!r} {result.stderr!r}"
+            )
+    ok("each command in hooks.json runs `python`, or `python3` where there is no `python`")
+
 
 def test_fails_closed_without_git(work):
     feature = make_repo(work, "nogit", "feature/n")
@@ -775,6 +838,8 @@ def main():
             test_worktree_without_its_own_file,
             test_main_checkout_without_the_file,
             test_borrowed_file_broken_or_immutable,
+            test_python_too_old,
+            test_hook_commands_find_python,
             test_fails_closed_without_git,
             test_line_continuations,
             test_shell_flags,

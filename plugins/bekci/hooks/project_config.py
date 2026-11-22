@@ -12,14 +12,31 @@ not be the repository a command acts on.
 `Config`, or a `Broken` that says what is wrong with the file.
 """
 
+from __future__ import annotations
+
 import subprocess
-import tomllib
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+
+try:
+    import tomllib
+except ImportError:  # before Python 3.11; see `too_old`
+    tomllib = None
 
 CONFIG_PATH = Path(".claude") / "tezgah.toml"
 GIT_TIMEOUT_SECONDS = 5
 
+
+def too_old():
+    """Why this Python cannot read the file, or `None`. `tomllib` came with Python 3.11.
+
+    The hooks check this before anything else, so an older Python gets a refusal that says
+    what to install instead of a crash, which would block every command.
+    """
+    if tomllib is not None:
+        return None
+    return f"bekci needs Python 3.11 or later and was started with Python {sys.version.split()[0]}"
 
 
 @dataclass(frozen=True)
@@ -85,6 +102,8 @@ def load_root(root, session=None):
         return None
     # The file's own folder is named when it is broken; the work tree it governs is `root`.
     source = path.parent.parent
+    if tomllib is None:
+        return Broken(source, too_old())
     try:
         with path.open("rb") as handle:
             data = tomllib.load(handle)
