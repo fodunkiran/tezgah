@@ -84,13 +84,20 @@ This needs Claude Code 2.1.295 or later. An older version ignores
 ## Known gaps
 
 An independent review on 2026-11-21, about 1,350 hook runs, found forms the
-guard let through or got wrong; those are fixed. What is still open is that
-bekci refuses some harmless commands:
+guard let through or got wrong; those are fixed, and so are the ones found
+while preparing the first release: a push inside a quoted command
+substitution, a base built by the shell, a work tree without its own file.
+bekci still refuses some harmless commands, because telling them apart takes
+a full shell parser:
 
-- a here-document body or a comment that mentions a push to a long-lived
-  branch;
-- a refspec built with `$(...)` or `${...}`;
-- `git push --tags` from a checkout on a long-lived branch.
+- a comment that mentions a push to a long-lived branch, on a line with any
+  quoting in it;
+- a here-document that mentions one, unless its delimiter is quoted and only
+  `cat`, `tee`, `git` or `gh` reads it;
+- text in single quotes that looks like a command substitution, such as
+  `'$(git push origin main)'`;
+- a refspec or a pull request base built from a variable or a command, other
+  than `$(git branch --show-current)` and its like on the line itself.
 
 ## What it runs
 

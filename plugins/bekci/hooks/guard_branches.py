@@ -10,10 +10,14 @@ The command line is split into words honouring quotes; `;`, `&&`, `||`, `|`, `&`
 newline separate commands. `cd`/`Set-Location` move the following commands to another
 folder, and the configuration and the current branch are read from the folder a push
 actually runs in. Commands inside `bash -c`, `powershell -Command`, `eval` and git aliases
-go through the same check. A push target is turned into a full ref the way git does it
-(`@`, `HEAD`, `heads/x`, globs, `remote.<name>.push`, `push.default`); a refspec that
-depends on the shell (a variable, brace expansion) is refused. An unexpected error while
-judging a command with a push or a pull request in it refuses that command.
+go through the same check, and so does every command substitution, quoted or not. A push
+target is turned into a full ref the way git does it (`@`, `HEAD`, `heads/x`, globs,
+`remote.<name>.push`, `push.default`); a refspec or a base that depends on the shell (a
+variable, brace expansion, a command) is refused, except `$(git branch --show-current)` and
+its like, whose branch is asked of git. Text the shell never runs is not checked where that
+is certain without parsing quotes: comments on a line without quoting, and the body of a
+quoted here-document that only a text reader takes. An unexpected error while judging a
+command with a push or a pull request in it refuses that command.
 """
 
 import base64
@@ -54,6 +58,28 @@ MAX_DEPTH = 4
 MAY_MATTER = re.compile(r"push|gh|git|-e", re.IGNORECASE)
 # Words that, after an unexpected error, make the guard refuse rather than crash.
 RISKY_WORDS = re.compile(r"\b(push|send-pack|pr|api)\b")
+
+# Commands that print the current branch. As a command substitution at the top of the line the
+# guard asks git for that branch in the folder the shell has reached, so
+# `git push -u origin "$(git branch --show-current)"` is judged by its branch instead of refused.
+CURRENT_BRANCH_COMMAND = (
+    r"git\s+(?:branch\s+--show-current|rev-parse\s+--abbrev-ref\s+HEAD|symbolic-ref\s+--short\s+HEAD)"
+)
+CURRENT_BRANCH = {
+    "bash": re.compile(rf"\$\(\s*{CURRENT_BRANCH_COMMAND}\s*\)|`\s*{CURRENT_BRANCH_COMMAND}\s*`"),
+    "powershell": re.compile(rf"\$\(\s*{CURRENT_BRANCH_COMMAND}\s*\)"),
+}
+CURRENT_BRANCH_MARK = "@bekci-current-branch@"
+CURRENT_BRANCH_UNKNOWN = "$(git branch --show-current)"
+# A here-document whose delimiter is quoted is never expanded. Read by a program that takes it as
+# text, its body never runs, so it is not checked: commit messages and pull request bodies.
+HEREDOC = re.compile(r"<<(-?)[ \t]*(?:'(\w+)'|\"(\w+)\"|\\(\w+))")
+TEXT_READERS = {"cat", "tee", "git", "gh"}
+# Programs that may run what they read; one anywhere on the line keeps the body checked.
+RUNS_INPUT = SHELLS | EVALUATORS | {"xargs", "source", "."}
+# Characters that make a line's quoting a matter of parsing. Comments are dropped only from a
+# line without any of them, and a here-document only when the rest of its line has none.
+QUOTING = re.compile(r"[\"'`\\$]")
 
 # `git` options that consume the next word.
 GIT_OPTIONS_WITH_VALUE = {
@@ -193,12 +219,79 @@ def join_continuations(line, shell):
     return "".join(pieces)
 
 
+def drop_inert_text(line, shell):
+    """Removes text the shell never runs, where that is certain without parsing quotes.
+
+    Bash only: `cmd`, which is checked as PowerShell, has no `#` comments. Comments go only
+    from a line with no quoting and no here-document, whose reader might be such a program. A
+    here-document body goes only when its delimiter is quoted (so it is never expanded), a text
+    reader takes it, nothing on its line could run it, and the rest of that line has no
+    quoting. Anything else stays and is checked: refusing harmless text costs less than
+    letting a push through.
+    """
+    if shell == "powershell" or ("#" not in line and "<<" not in line):
+        return line
+    if not QUOTING.search(line) and "<<" not in line:
+        return "\n".join(strip_comment(part) for part in line.split("\n"))
+    if "<<" not in line:
+        return line
+    lines = line.split("\n")
+    kept = []
+    index = 0
+    while index < len(lines):
+        kept.append(lines[index])
+        end = here_document_end(lines, index)
+        index = end + 1 if end is not None else index + 1
+    return "\n".join(kept)
+
+
+def strip_comment(text):
+    """`text` up to a `#` that starts a word."""
+    for index, character in enumerate(text):
+        if character == "#" and (index == 0 or text[index - 1] in " \t;&|("):
+            return text[:index]
+    return text
+
+
+def here_document_end(lines, index):
+    """The index of the line that ends a here-document opened on `lines[index]`, when its
+    body may be dropped; otherwise `None`."""
+    current = lines[index]
+    found = list(HEREDOC.finditer(current))
+    if len(found) != 1 or current.count("<<") != 1:
+        return None
+    match = found[0]
+    before, after = current[: match.start()], current[match.end() :]
+    if QUOTING.search(before + after):
+        return None
+    if any(program(word) in RUNS_INPUT for word in re.findall(r"[^\s;&|()<>]+", before + " " + after)):
+        return None
+    words = re.split(r"[;&|(]", before)[-1].split()
+    if not words or program(words[0]) not in TEXT_READERS:
+        return None
+    if program(words[0]) == "git" and not git_builtin(words[1:]):
+        return None
+    delimiter = match.group(2) or match.group(3) or match.group(4)
+    for end in range(index + 1, len(lines)):
+        if (lines[end].lstrip("\t") if match.group(1) else lines[end]) == delimiter:
+            return end
+    return None
+
+
+def git_builtin(args):
+    """Whether the git subcommand in `args` (the words after `git`) is a builtin, not an alias."""
+    index = 0
+    while index < len(args) and args[index].startswith("-"):
+        index += 2 if args[index] in GIT_OPTIONS_WITH_VALUE else 1
+    return index < len(args) and args[index] in BUILTINS
+
+
 def tokens_of(line, shell):
     """Words honouring quotes; separators become words of their own.
 
     In PowerShell a backslash is a path separator, not an escape.
     """
-    line = join_continuations(line, shell)
+    line = drop_inert_text(join_continuations(line, shell), shell)
     lexer = shlex.shlex(line, posix=True, punctuation_chars=SEPARATOR_CHARS)
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
@@ -255,6 +348,8 @@ def directory_change(words, cwd):
 def check_line(line, cwd, shell, depth=0):
     if depth > MAX_DEPTH:
         deny("The command nests shells too deeply for pushes and pull requests to be checked.")
+    if depth == 0:
+        line = CURRENT_BRANCH["powershell" if shell == "powershell" else "bash"].sub(CURRENT_BRANCH_MARK, line)
     for words in commands_of(line, shell):
         new_cwd = directory_change(words, cwd)
         if new_cwd is not None:
@@ -264,12 +359,19 @@ def check_line(line, cwd, shell, depth=0):
 
 
 def check_command(words, cwd, shell, depth):
+    # A command substitution runs what it holds, quoted or not. Unquoted ones were split off
+    # as commands already; quoted ones are still inside a word.
+    for word in words:
+        for inner in substitutions(word, shell):
+            check_line(inner, cwd, shell, depth + 1)
     for index, word in enumerate(words):
         name = program(word)
         if name not in WATCHED:
             continue
         # Slicing only here keeps a very long command line linear.
         rest = words[index + 1 :]
+        if any(CURRENT_BRANCH_MARK in item for item in rest):
+            rest = with_current_branch(rest, cwd if name == "git" and depth == 0 else None)
         if name == "git":
             check_git(rest, cwd, shell, depth)
             return
@@ -285,6 +387,38 @@ def check_command(words, cwd, shell, depth):
         if name in EVALUATORS:
             check_line(" ".join(rest), cwd, shell, depth + 1)
             return
+
+
+def substitutions(word, shell):
+    """What a word runs as commands: everything after a `$(` (which holds at least the
+    substitution) and, in bash, the text between each pair of backticks. An escaped one is text."""
+    found = []
+    index = 0
+    while index < len(word):
+        escaped = index > 0 and word[index - 1] == "\\"
+        if word.startswith("$(", index) and not escaped:
+            found.append(word[index + 2 :])
+            break
+        if word[index] == "`" and shell != "powershell" and not escaped:
+            end = word.find("`", index + 1)
+            if end < 0:
+                found.append(word[index + 1 :])
+                break
+            found.append(word[index + 1 : end])
+            index = end
+        index += 1
+    return found
+
+
+def with_current_branch(words, folder):
+    """Puts the branch back where the line said `$(git branch --show-current)`.
+
+    `folder` is where the shell runs that command: the folder the line has reached, for a git
+    command of the line itself. For a nested shell the quoting decides which shell runs it, and
+    where, so `folder` is `None` and the text stays unresolvable.
+    """
+    branch = current_branch(["-C", folder]) if folder else ""
+    return [word.replace(CURRENT_BRANCH_MARK, branch or CURRENT_BRANCH_UNKNOWN) for word in words]
 
 
 def sh_command(arguments):
@@ -472,6 +606,9 @@ def check_push(args, location):
         for spec in refspecs:
             check_refspec(spec, location, configured, reasons)
         return
+    if "--tags" in args:
+        # `--tags` names what to push, so neither `remote.<name>.push` nor `push.default` adds a branch.
+        return
     # No refspec: `remote.<name>.push` decides first, then `push.default`.
     if configured:
         for spec in configured:
@@ -528,6 +665,8 @@ def check_gh(args, cwd):
             return
         release, integration = config.release, config.integration
         bases = option_values(args[2:], {"--base", "-B"})
+        if any(is_unresolvable(base) for base in bases):
+            deny("The pull request's base depends on the shell, so it cannot be checked. Name the branch.")
         if args[1] in {"create", "new"} and not bases:
             deny(
                 f"`gh pr {args[1]}` without a base targets the default branch (`{release}`). "
@@ -567,6 +706,9 @@ def check_gh_api(args, cwd):
         return
     reasons = long_lived_reasons(config)
     release, integration = config.release, config.integration
+    # The values that name a branch must be plain words; `%` stays allowed for URL escapes.
+    if any(re.search(r"[$`]", value) for value in (path, fields.get("base", ""), fields.get("ref", ""), fields.get("branch", ""))):
+        deny("`gh api` names a branch through the shell, so its target cannot be checked. Name the branch.")
     path = path.split("?", 1)[0].rstrip("/")
     ref_match = re.search(r"git/refs/heads/(.+)$", path)
     if ref_match and ref_match.group(1) in reasons:

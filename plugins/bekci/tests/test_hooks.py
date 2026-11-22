@@ -495,6 +495,87 @@ def test_hook_commands_find_python(work):
     ok("each command in hooks.json runs `python`, or `python3` where there is no `python`")
 
 
+def test_command_substitutions(work):
+    repo = make_repo(work, "subst", "feature/s")
+    for command in (
+        'echo "$(git push origin development)"',
+        'X="$(git push origin HEAD:main)"',
+        'echo "x `git push origin development` y"',
+        "git commit -m \"$(cat <<'EOF'\nok\nEOF\n)\" && echo \"$(git push origin development)\"",
+        # The here-document ends at its delimiter, not at the first `)`.
+        "echo \"$(cat <<'EOF'\na)\nEOF\ngit push origin main)\"",
+        'gh pr create --base "$(echo main)" --title t',
+        "gh pr edit 3 --base $BASE",
+        'gh api repos/o/r/merges -f base="$(echo main)" -f head=x',
+        'gh api -X PATCH "repos/o/r/git/refs/heads/$B" -f sha=1',
+    ):
+        expect(command, "deny", repo)
+    for command in (
+        'echo "$(git status)"',
+        'cd "$(git rev-parse --show-toplevel)" && git status',
+        'echo "\\`git push origin main\\`"',
+        "gh api repos/o/r/git/refs/heads/feature%2Fx -X PATCH -f sha=1",
+    ):
+        expect(command, "allow", repo)
+    ok("a command substitution is checked as commands, quoted or not; a base built by the shell is refused")
+
+
+def test_current_branch_substitution(work):
+    feature = make_repo(work, "cb-feature", "feature/c")
+    integration = make_repo(work, "cb-integration", "development")
+    for command in (
+        'git push -u origin "$(git branch --show-current)"',
+        "git push origin $(git rev-parse --abbrev-ref HEAD)",
+        "git push origin `git symbolic-ref --short HEAD`",
+        'git push origin "$(git branch --show-current):refs/heads/feature/c"',
+    ):
+        expect(command, "allow", feature)
+        expect(command.replace("feature/c", "development"), "deny", integration)
+    expect('git push origin "$(git branch --show-current)"', "allow", feature, tool="PowerShell")
+    expect("git push origin $(git branch --show-current):main", "deny", feature)
+    expect("git push origin ${BRANCH}", "deny", feature)
+    expect("git push origin $(echo feature/c)", "deny", feature)
+    # In a nested shell the quoting decides which shell runs it, and where.
+    expect("bash -c 'git push origin $(git branch --show-current)'", "deny", feature)
+    expect(f"bash -c \"cd '{integration.as_posix()}' && git push origin $(git branch --show-current)\"", "deny", feature)
+    # The shell asks in its own folder, not in the one `git -C` names.
+    expect(f"git -C '{integration.as_posix()}' push origin \"$(git branch --show-current)\"", "allow", feature)
+    expect(f"git -C '{feature.as_posix()}' push origin \"$(git branch --show-current)\"", "deny", integration)
+    expect(f"cd '{integration.as_posix()}' && git push origin $(git branch --show-current)", "deny", feature)
+    ok("`$(git branch --show-current)` in a refspec is judged by the branch the shell would print there")
+
+
+def test_tags_heredocs_and_comments(work):
+    repo = make_repo(work, "text", "development")
+    for command in ("git push --tags", "git push origin --tags"):
+        expect(command, "allow", repo)
+    for command in ("git push origin --tags development", "git push --follow-tags"):
+        expect(command, "deny", repo)
+    for command in (
+        "git commit -F - <<'EOF'\nNever git push origin main\nEOF",
+        "git commit -m \"$(cat <<'EOF'\nfix: stop `git push origin main`\nEOF\n)\"",
+        "cat > notes.md <<'EOF'\ngit push origin development\nEOF\ngit status",
+        'gh pr create --base development --title t --body-file - <<"EOF"\nthen gh pr create\nEOF',
+        "git status  # before any git push origin main",
+    ):
+        expect(command, "allow", repo)
+    for command in (
+        "cat <<'EOF' | bash\ngit push origin development\nEOF",
+        "bash <<'EOF'\ngit push origin development\nEOF",
+        "cat <<EOF\n$(git push origin development)\nEOF",
+        "cat <<'EOF' | $SHELL\ngit push origin development\nEOF",
+        "cat > f <<'EOF'\ntext\nEOF\ngit push origin development",
+        "cat <<'EOF'\ngit push origin development",
+        "git -c alias.x='!sh' x <<'EOF'\ngit push origin development\nEOF",
+        "git status # x\ngit push origin main",
+        "echo 'a' # git push origin main",
+        "cmd <<EOF\necho # & git push origin development\nEOF",
+    ):
+        expect(command, "deny", repo)
+    expect('cmd /c "echo # & git push origin development"', "deny", repo, tool="PowerShell")
+    ok("`--tags` alone pushes no branch; a quoted here-document read as text, and a comment on a line without quoting, run nothing")
+
+
 def test_fails_closed_without_git(work):
     feature = make_repo(work, "nogit", "feature/n")
     empty = work / "empty-path"
@@ -840,6 +921,9 @@ def main():
             test_borrowed_file_broken_or_immutable,
             test_python_too_old,
             test_hook_commands_find_python,
+            test_command_substitutions,
+            test_current_branch_substitution,
+            test_tags_heredocs_and_comments,
             test_fails_closed_without_git,
             test_line_continuations,
             test_shell_flags,
