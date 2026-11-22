@@ -105,8 +105,8 @@ def load_root(root, session=None):
     if tomllib is None:
         return Broken(source, too_old())
     try:
-        with path.open("rb") as handle:
-            data = tomllib.load(handle)
+        # Windows PowerShell 5 writes UTF-8 with a byte order mark, which TOML does not allow.
+        data = tomllib.loads(path.read_bytes().decode("utf-8").removeprefix("﻿"))
     except tomllib.TOMLDecodeError as error:
         return Broken(source, f"it does not parse: {error}")
     except (OSError, UnicodeDecodeError) as error:
@@ -196,8 +196,8 @@ def parse(root, data):
 
     return Config(
         root=root,
-        integration=integration.strip(),
-        release=release.strip() if release else None,
+        integration=integration.strip().removeprefix("refs/heads/"),
+        release=release.strip().removeprefix("refs/heads/") if release else None,
         immutable_paths=tuple(paths),
         format_rust=rust,
     )

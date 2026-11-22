@@ -44,10 +44,15 @@ def landed_file(path, session=None):
     # The edit tools resolve a path lexically: `sub/..` collapses even if `sub` does not
     # exist, while a POSIX kernel stops at the missing `sub`. Simplify first, as the tool does.
     path = Path(os.path.abspath(path))
-    if not path.is_file():
+    if path.is_dir():
         return None
     resolved = path.resolve()
-    config = project_config.load(resolved.parent, session=session)
+    # A `Write` can bring back a landed file that is gone from the work tree; ask git from the
+    # nearest folder that still exists.
+    folder = resolved.parent
+    while not folder.is_dir() and folder != folder.parent:
+        folder = folder.parent
+    config = project_config.load(folder, session=session)
     if not isinstance(config, project_config.Config) or not config.immutable_paths:
         return None
     root = config.root.resolve()
@@ -73,10 +78,16 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
     # Claude Code writes the payload as UTF-8; on Windows stdin defaults to the ANSI code page.
-    payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
-    raw = payload.get("tool_input", {}).get("file_path", "")
+    try:
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
+    except (ValueError, RecursionError):
+        return
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    raw = ""
+    if isinstance(tool_input, dict):
+        raw = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
     # A Python too old to read the file lets edits through, as a broken file does.
-    if not raw or project_config.too_old():
+    if not isinstance(raw, str) or not raw or project_config.too_old():
         return
     cwd = payload.get("cwd")
     try:

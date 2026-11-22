@@ -451,8 +451,9 @@ def test_python_too_old(work):
     for command in ("git push origin feature/x", "git push", "gh pr create --base development --title t"):
         actual, reason = branches(command, repo)
         assert actual == "deny" and "needs Python 3.11 or later" in reason, f"{command!r} -> {actual} ({reason})"
-    for command in ("git status", "git commit -m wip", "cargo build"):
+    for command in ("git status", "git commit -m wip", "cargo build", "gh api repos/o/r/pulls", "gh pr list", "gh pr view 4"):
         assert branches(command, repo)[0] == "allow", command
+    assert branches("gh api -X PATCH repos/o/r/pulls/1 -f base=x", repo)[0] == "deny"
     assert branches("git push origin main", unconfigured)[0] == "allow"
     migrations = repo / "migrations"
     migrations.mkdir()
@@ -573,7 +574,206 @@ def test_tags_heredocs_and_comments(work):
     ):
         expect(command, "deny", repo)
     expect('cmd /c "echo # & git push origin development"', "deny", repo, tool="PowerShell")
+    # A backslash does not carry a comment onto the next line.
+    expect("true # \\\ngit push origin main", "deny", repo)
+    expect("true #\\\ngit push origin main", "deny", repo)
+    for command in ("git push origin feature/x # main", "git status # then git push origin main"):
+        expect(command, "allow", repo, tool="PowerShell")
     ok("`--tags` alone pushes no branch; a quoted here-document read as text, and a comment on a line without quoting, run nothing")
+
+
+def test_head_moved_on_the_line(work):
+    repo = make_repo(work, "head-moved", "feature/h")
+    for command in (
+        "git checkout main && git push",
+        "git switch development; git push origin HEAD",
+        'git checkout development && git push origin "$(git branch --show-current)"',
+        "git branch -m main && git push",
+        "gh pr checkout 5 && git push",
+    ):
+        expect(command, "deny", repo)
+    expect("git checkout main; git push", "deny", repo, tool="PowerShell")
+    for command in (
+        "git checkout -b feature/n && git push -u origin feature/n",
+        "git switch -c feature/m && git push origin HEAD:feature/m",
+        "git symbolic-ref --short HEAD && git push",
+    ):
+        expect(command, "allow", repo)
+    ok("after a command that moves HEAD, a push that depends on HEAD is refused")
+
+
+def test_aliases_lead_on(work):
+    repo = make_repo(work, "alias-chain", "feature/a")
+    git(repo, "config", "alias.p", "push")
+    git(repo, "config", "alias.q", "p")
+    git(repo, "config", "alias.up", "!git push origin")
+    git(repo, "config", "alias.loop", "loop")
+    for command in (
+        "git q origin main",
+        "git up main",
+        "git config alias.x '!git push origin main' && git x",
+        "git config alias.y push; git y origin development",
+    ):
+        expect(command, "deny", repo)
+    for command in ("git q origin feature/a", "git up feature/a", "git loop"):
+        expect(command, "allow", repo)
+    ok("an alias is followed through other aliases, and a shell alias gets its arguments")
+
+
+def test_cd_that_does_not_move(work):
+    repo = make_repo(work, "cd-stays", "feature/c")
+    (repo / "sub").mkdir()
+    other = make_repo(work, "cd-other", "feature/o", config=None).as_posix()
+    for command in (
+        f"(cd '{other}'); git push origin main",
+        f"cd '{other}' | cat; git push origin main",
+        f"cd '{other}' & git push origin main",
+        "cd /no/such/folder; git push origin main",
+        f"pushd '{other}'; popd; git push origin main",
+        f"cd '{other}' && cd - && git push origin main",
+        'cd "$(git rev-parse --show-toplevel)" && git push origin main',
+        "cd $(git rev-parse --show-toplevel) && git push origin main",
+        "cd $BEKCI_UNSET_FOLDER && git push origin feature/c",
+        'git -C "$BEKCI_UNSET_FOLDER" push origin feature/c',
+        "git -C $(pwd) push origin main",
+    ):
+        expect(command, "deny", repo)
+    expect("Set-Location $env:BEKCI_UNSET_FOLDER; git push origin feature/c", "deny", repo, tool="PowerShell")
+    for command in (
+        "cd sub && git push origin feature/c",
+        "(cd sub && git status); git push origin feature/c",
+        'cd "$(git rev-parse --show-toplevel)" && git push origin feature/c',
+        f"cd '{other}' && git push origin main",
+    ):
+        expect(command, "allow", repo)
+    ok("a `cd` in a subshell, a pipeline, the background or to a missing folder moves nothing; one the shell names is refused")
+
+
+def test_redirections_and_unquoted_substitutions(work):
+    repo = make_repo(work, "redirect", "feature/r")
+    for command in (
+        "git push origin main>/dev/null",
+        "git push origin main>>log",
+        "git push origin main</dev/null",
+        "git push origin main>&2",
+        "git push origin HEAD:main>x",
+        "git push >/dev/null origin main",
+        "git push origin main 2>&1",
+        "git push $(git remote) main",
+        "git push $(echo origin) HEAD:main",
+        "git push `git remote` main",
+    ):
+        expect(command, "deny", repo)
+    for command in ('git push origin ("main")', 'git push origin @("main")'):
+        expect(command, "deny", repo, tool="PowerShell")
+    for command in (
+        "git push origin feature/r >/dev/null 2>&1",
+        "git push origin feature/r>log",
+        "git push $(git remote) feature/r",
+    ):
+        expect(command, "allow", repo)
+    ok("a redirection is no part of a refspec, and an unquoted substitution keeps the push's other words")
+
+
+def test_more_ways_to_run_commands(work):
+    repo = make_repo(work, "runs", "feature/u")
+    for command in (
+        "echo 'git push origin main' | bash",
+        "bash <<< 'git push origin main'",
+        "printf 'git status\\ngit push origin main\\n' | sh",
+        "fish -c 'git push origin main'",
+        "git rebase -x 'git push origin HEAD:main' HEAD~1",
+        "git rebase --exec='git push origin main' HEAD~1",
+        "git submodule foreach 'git push origin main'",
+        "git submodule foreach --recursive git push origin main",
+        "git bisect run git push origin main",
+        "sudo -u git git push origin main",
+    ):
+        expect(command, "deny", repo)
+    for command in ("'git push origin main' | Invoke-Expression", "echo 'git push origin main' | iex"):
+        expect(command, "deny", repo, tool="PowerShell")
+    for command in ("echo hello | bash", "bash <<< 'git status'", "git rebase -x 'cargo test' HEAD~1", "git submodule foreach git status"):
+        expect(command, "allow", repo)
+    ok("a shell fed a here-string or an `echo`, and git's `rebase -x`, `submodule foreach`, `bisect run`, are checked")
+
+
+def test_gh_and_push_review_forms(work):
+    repo = make_repo(work, "gh-forms", "feature/g")
+    for command in (
+        "gh pr -R o/r create --base main",
+        "gh pr --repo o/r create --base main",
+        "gh pr create -R o/r --title t",
+        "gh api repos/o/r/merge-upstream -f branch=main",
+        "gh api -X POST repos/o/r/branches/main/rename -f new_name=x",
+    ):
+        expect(command, "deny", repo)
+    for command in (
+        "gh pr --repo o/r create --base development --title t",
+        "gh pr create --help",
+        "gh pr create --dry-run --title t",
+        "gh api repos/o/r/merge-upstream -f branch=feature/g",
+        "gh api -X POST repos/o/r/branches/feature/g/rename -f new_name=y",
+    ):
+        expect(command, "allow", repo)
+    on_development = make_repo(work, "push-forms", "development")
+    for command in ("git push --help", "git push -h", "git push -n", "git push --dry-run origin main", "git push -nu origin development"):
+        expect(command, "allow", on_development)
+    for command in ("git push -u origin development", "git push -o n origin development"):
+        expect(command, "deny", on_development)
+    ok("`gh pr -R`, `merge-upstream` and branch renames are checked; help and dry runs push nothing")
+
+
+def test_config_spellings(work):
+    bom = make_repo(work, "bom", "feature/b", config=None)
+    (bom / ".claude").mkdir()
+    (bom / ".claude" / "tezgah.toml").write_bytes(b"\xef\xbb\xbf" + CLASSIC.encode("utf-8"))
+    expect("git push origin feature/b", "allow", bom)
+    expect("git push origin development", "deny", bom)
+    full = make_repo(work, "full-refs", "feature/f", config='[branches]\nintegration = "refs/heads/development"\nrelease = "refs/heads/main"\n')
+    for command in ("git push origin main", "git push origin HEAD:refs/heads/main", "gh pr create --base main"):
+        expect(command, "deny", full)
+    expect("git push origin feature/f", "allow", full)
+    ok("a byte order mark and `refs/heads/` names in the file mean what they say")
+
+
+def test_immutable_review_forms(work):
+    repo = make_repo(work, "imm-forms", "development", config=CLASSIC + '[immutable]\npaths = ["migrations/*.sql", "notebooks/*.ipynb"]\n')
+    migrations, notebooks = repo / "migrations", repo / "notebooks"
+    migrations.mkdir()
+    notebooks.mkdir()
+    (migrations / "0001.sql").write_text("SELECT 1;\n", encoding="utf-8", newline="\n")
+    (notebooks / "a.ipynb").write_text("{}\n", encoding="utf-8", newline="\n")
+    git(repo, "add", "migrations", "notebooks")
+    git(repo, "commit", "-q", "-m", "landed")
+    landed = migrations / "0001.sql"
+
+    def edit(tool, tool_input):
+        return decision("guard_immutable.py", {"tool_name": tool, "tool_input": tool_input, "cwd": str(repo)})
+
+    assert edit("NotebookEdit", {"notebook_path": str(notebooks / "a.ipynb")}) == "deny"
+    assert edit("MultiEdit", {"file_path": str(landed), "edits": []}) == "deny"
+    # Gone from the work tree, still landed: a `Write` would bring it back changed.
+    landed.unlink()
+    assert edit("Write", {"file_path": str(landed), "content": "x"}) == "deny"
+    shutil.rmtree(migrations)
+    assert edit("Write", {"file_path": str(landed), "content": "x"}) == "deny"
+    assert edit("Write", {"file_path": str(migrations / "0002.sql"), "content": "x"}) == "allow"
+    for tool_input in (None, [], {"file_path": 5}, {"file_path": None}, {}):
+        assert edit("Edit", tool_input) == "allow", tool_input
+    result = run_hook("guard_immutable.py", "not json")
+    assert result.returncode == 0 and not result.stdout, result
+    ok("a landed file is guarded when it is missing locally, in MultiEdit and NotebookEdit; odd input is no crash")
+
+
+def test_odd_input_to_the_formatter(work):
+    repo = make_repo(work, "fmt-odd", "feature/f", config=CLASSIC + "[format]\nrust = true\n")
+    (repo / "Cargo.toml").write_text("package = 3\n[workspace]\npackage = 3\n", encoding="utf-8", newline="\n")
+    source = repo / "main.rs"
+    source.write_text("fn main() {}\n", encoding="utf-8", newline="\n")
+    for tool_input in ({"file_path": str(source)}, None, {"file_path": 5}):
+        result = run_hook("format_edited.py", {"tool_name": "Edit", "tool_input": tool_input, "cwd": str(repo)})
+        assert result.returncode == 0, (tool_input, result.stderr)
+    ok("a malformed Cargo.toml or tool input does not crash the formatter")
 
 
 def test_fails_closed_without_git(work):
@@ -924,6 +1124,15 @@ def main():
             test_command_substitutions,
             test_current_branch_substitution,
             test_tags_heredocs_and_comments,
+            test_head_moved_on_the_line,
+            test_aliases_lead_on,
+            test_cd_that_does_not_move,
+            test_redirections_and_unquoted_substitutions,
+            test_more_ways_to_run_commands,
+            test_gh_and_push_review_forms,
+            test_config_spellings,
+            test_immutable_review_forms,
+            test_odd_input_to_the_formatter,
             test_fails_closed_without_git,
             test_line_continuations,
             test_shell_flags,

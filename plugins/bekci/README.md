@@ -10,17 +10,24 @@ In a repository that commits a `.claude/tezgah.toml` file, bekci refuses:
 - **A push to a long-lived branch.** Any `git push` that would update the
   integration or the release branch: a refspec that names it, a bare push from
   a checkout that is on it, `--all` and `--mirror`, and the same push reached
-  through `cd`, `git -C`, a nested shell (`bash -c`, `powershell -Command`),
-  `eval`, a git alias or `gh api`.
+  through `cd`, `git -C`, a nested shell (`bash -c`, `powershell -Command`, a
+  shell fed by `echo` or a here-string), `eval`, a command substitution, a git
+  alias, `git rebase --exec`, `git submodule foreach`, `git bisect run` or
+  `gh api`.
 - **A pull request against the release branch.** `gh pr create` with the
   release branch as its base or with no base at all, and `gh pr edit` that
   moves a base to the release branch.
-- **An edit to a file that has landed.** An `Edit` or `Write` to a file that
-  matches `immutable.paths` once that file exists on `origin/<integration>`.
-  A file still on its topic branch stays editable.
+- **An edit to a file that has landed.** An `Edit`, `Write`, `MultiEdit` or
+  `NotebookEdit` of a file that matches `immutable.paths` once that file exists
+  on `origin/<integration>`, also when it is gone from the work tree. A file
+  still on its topic branch stays editable.
 
-After an `Edit` or `Write` it formats the file with a formatter from a fixed
-list (`rustfmt` for `.rs` files).
+After an edit it formats the file with a formatter from a fixed list
+(`rustfmt` for `.rs` files).
+
+It reads the command line the way the shell groups it: a `cd` inside a
+subshell, a pipeline or the background moves nothing, a `cd` that fails leaves
+the shell where it was, and a redirection is no part of a refspec.
 
 In a repository without `.claude/tezgah.toml` it does nothing, so installing
 it for every project is safe.
@@ -71,24 +78,32 @@ This needs Claude Code 2.1.295 or later. An older version ignores
 
 ## What it cannot see
 
-- A file changed by a shell command instead of `Edit` or `Write`.
-- A push made from inside a script file the command line only names.
+- A file changed by a shell command instead of an edit tool.
+- A push made from inside a script file the command line only names, or from a
+  script a shell reads on standard input from anything but `echo`, `printf` or
+  a here-string.
 - A push assembled outside the command line's plain words: `xargs`,
-  `Start-Process`, an interpreter that calls git, a branch name produced by
-  shell expansion, and git configuration given on the command line or through
-  the environment.
+  `Start-Process`, an interpreter that calls git, git configuration given on
+  the command line or through the environment, and git commands that run other
+  commands besides the three named above.
+- `gh api` calls other than those that change a ref, merge, sync a fork,
+  rename a branch, open or move a pull request, or write a file.
 - Anything outside Claude Code. It binds the agent, never a person at a
   terminal, and it is not a substitute for branch protection on the server.
 - A cloud session does not load plugins installed on your machine.
 
 ## Known gaps
 
-An independent review on 2026-11-21, about 1,350 hook runs, found forms the
-guard let through or got wrong; those are fixed, and so are the ones found
-while preparing the first release: a push inside a quoted command
-substitution, a base built by the shell, a work tree without its own file.
-bekci still refuses some harmless commands, because telling them apart takes
-a full shell parser:
+Two independent reviews, on 2026-11-21 (about 1,350 hook runs) and on
+2026-11-22 (about 400), found forms the guard let through or got wrong; those
+are fixed, each with a test. bekci still refuses some harmless commands,
+because telling them apart takes a full shell parser or knowing the future:
+
+- a push that depends on HEAD (a bare push, `HEAD`,
+  `$(git branch --show-current)`) after a command on the same line that moves
+  HEAD, such as `git checkout`;
+- a push or a pull request after a `cd` to a folder the shell supplies, a
+  variable or a command other than `git rev-parse --show-toplevel`;
 
 - a comment that mentions a push to a long-lived branch, on a line with any
   quoting in it;

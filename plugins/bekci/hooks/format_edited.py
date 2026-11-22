@@ -31,26 +31,38 @@ def edition_for(path):
         except (OSError, tomllib.TOMLDecodeError):
             return FALLBACK_EDITION
         if not wants_workspace:
-            edition = data.get("package", {}).get("edition")
+            edition = table(data, "package").get("edition")
             if isinstance(edition, str):
                 return edition
             if isinstance(edition, dict) and edition.get("workspace") is True:
                 wants_workspace = True
             elif "package" in data:
                 return FALLBACK_EDITION
-        workspace_edition = data.get("workspace", {}).get("package", {}).get("edition")
+        workspace_edition = table(table(data, "workspace"), "package").get("edition")
         if wants_workspace and isinstance(workspace_edition, str):
             return workspace_edition
     return FALLBACK_EDITION
 
 
+def table(data, key):
+    """`data[key]` when it is a table; an empty one otherwise, so a malformed manifest is no crash."""
+    value = data.get(key)
+    return value if isinstance(value, dict) else {}
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
-    payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
-    raw = payload.get("tool_input", {}).get("file_path", "")
+    try:
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
+    except (ValueError, RecursionError):
+        return
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    raw = tool_input.get("file_path", "") if isinstance(tool_input, dict) else ""
+    if not isinstance(raw, str) or not raw or tomllib is None:
+        return
     path = Path(raw)
-    if not raw or path.suffix != ".rs" or not path.is_file() or tomllib is None:
+    if path.suffix != ".rs" or not path.is_file():
         return
     cwd = payload.get("cwd")
     try:
