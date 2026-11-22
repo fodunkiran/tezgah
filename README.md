@@ -28,14 +28,21 @@ Hooks have no context cost; they run outside the conversation.
 - **What a project owns stays in the project:** its instructions, its
   `verify` skill, its CI.
 
-## Installing from a local checkout
+## Installing
 
 ```bash
-claude plugin marketplace add /path/to/tezgah
-claude plugin install bekci@tezgah --scope user
-claude plugin install pano@tezgah --scope user
-claude plugin install orkestra@tezgah --scope user
+claude plugin marketplace add fodunkiran/tezgah
+claude plugin install bekci@tezgah
+claude plugin install pano@tezgah
+claude plugin install orkestra@tezgah
 ```
+
+In a session the same is `/plugin marketplace add fodunkiran/tezgah` and
+`/plugin install bekci@tezgah`. A plugin installs for your account unless
+you add `--scope project` (one project, written to its
+`.claude/settings.json`) or `--scope local` (one project, on this machine
+only). From a local checkout, give the folder: `claude plugin marketplace add
+/path/to/tezgah`.
 
 Then add `.claude/tezgah.toml` to each project that should be guarded; the
 fields are in [bekci's README](plugins/bekci/README.md).
